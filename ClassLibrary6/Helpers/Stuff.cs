@@ -39,6 +39,7 @@ namespace ClassLibrary6.Helpers
         {
             return HUDManager.Instance;
         }
+        //DUDE these 2 are useless my dumbass made it loop causing a crash
         public PlayerControllerB GetPlayer()
         {
             return GetPlayer();
