@@ -1,4 +1,4 @@
-﻿using ClassLibrary6.Helpers;
+using ClassLibrary6.Helpers;
 using ClassLibrary6.Toggles;
 using DigitalRuby.ThunderAndLightning;
 using GameNetcodeStuff;
@@ -24,7 +24,7 @@ namespace ClassLibrary4
         //gui stuff
         Rect recttington = new Rect(100, 100, 800, 550);
         int selected = 0;
-        string[] tabs = { "Home", "Self", "Visuals", "Players", "Enemies", "Shop/Company", "Server", "Logging", "Settings" };
+        string[] tabs = { "Home", "Self", "Visuals", "Players", "Enemies", "Spawners", "Shop/Company", "Server", "Logging", "Settings" };
 
         //- style stuff -
         GUIStyle window;
@@ -37,6 +37,39 @@ namespace ClassLibrary4
         Texture2D tab3;
         Texture2D pixel;
 
+        //enums
+        public enum Enemies
+        {
+            Unknown,
+            Centipede,
+            SandSpider,
+            HoarderBug,
+            Flowerman,
+            Crawler,
+            Blob,
+            DressGirl,
+            Puffer,
+            Nutcracker,
+            RedLocustBees,
+            Doublewing,
+            DocileLocustBees,
+            MouthDog,
+            ForestGiant,
+            SandWorm,
+            BaboonHawk,
+            SpringMan,
+            Jester,
+            LassoMan,
+            MaskedPlayerEnemy,
+            Butler,
+            ButlerBees,
+            RadMech,
+            FlowerSnake,
+            BushWolf,
+            ClaySurgeon,
+            CaveDweller
+        }
+
         //for gui
         bool show = false;
 
@@ -48,6 +81,7 @@ namespace ClassLibrary4
         EnemyAI[] enemies = Array.Empty<EnemyAI>();
         int selectedEnemyIndex = -1;
         int selectedPlayerIndex = -1;
+        int selecteEnemySpawnIndex = -1;
         PlayerControllerB[] players = Array.Empty<PlayerControllerB>();
 
         //instances/classes
@@ -557,7 +591,46 @@ namespace ClassLibrary4
                     GUILayout.EndVertical();
                     GUILayout.EndHorizontal();
                     break;
-                case 5: //shop
+                case 5:
+                    GUILayout.BeginVertical();
+                    GUILayout.Label("<b>Enemy spawner</b>", GUI.skin.label);
+
+                    scrolling = GUILayout.BeginScrollView(scrolling);
+
+                    foreach (Enemies enemyType in Enum.GetValues(typeof(Enemies)))
+                    {
+                        if (enemyType == Enemies.Unknown) continue;
+
+                        GUILayout.BeginHorizontal();
+
+                        if (GUILayout.Button(enemyType.ToString(), tabst, GUILayout.Width(200f)))
+                        {
+                            selectedEnemyIndex = (int)enemyType;
+                        }
+
+                        if (selectedEnemyIndex == (int)enemyType)
+                        {
+                            if (GUILayout.Button("Spawn", tabst, GUILayout.Width(80f)))
+                            {
+                                var roundman = RoundManager.Instance;
+                                if (roundman != null)
+                                {
+                                    roundman.SpawnEnemyOnServer(
+                                        GameNetworkManager.Instance.localPlayerController.transform.position + new Vector3(2f, 0f, 2f),
+                                        0,
+                                        (int)enemyType - 1
+                                    );
+                                }
+                            }
+                        }
+
+                        GUILayout.EndHorizontal();
+                    }
+
+                    GUILayout.EndScrollView();
+                    GUILayout.EndVertical();
+                    break;
+                case 6: //shop
                     bool noprice = GUILayout.Button("No shop item cost", tabst);
                     if (noprice)
                     {
@@ -630,7 +703,7 @@ namespace ClassLibrary4
                         }
                     }
                     break;
-                case 6: //server
+                case 7: //server
                     scrolling = GUILayout.BeginScrollView(scrolling);
 
                     Toggles.inst.spamhorn = GUILayout.Toggle(Toggles.inst.spamhorn, "Spam horn");
@@ -897,7 +970,7 @@ namespace ClassLibrary4
 
                     GUILayout.EndScrollView();
                     break;
-                case 7: //logging
+                case 8: //logging
                     bool getids = GUILayout.Button("Log all players", tabst);
                     if (getids)
                     {
@@ -966,9 +1039,9 @@ namespace ClassLibrary4
                     {
                         foreach (HUDManager level in FindObjectsOfType<HUDManager>())
                         {
-                            foreach (var levell in level.playerLevels)
+                            foreach (var levelbl in level.playerLevels)
                             {
-                                Debug.Log($"level: {levell.levelName} | xp: {levell.XPMax} | min: {levell.XPMin}");
+                                Debug.Log($"level: {levelbl.levelName} | xp: {levelbl.XPMax} | min: {levelbl.XPMin}");
                             }
                         }
                     }
