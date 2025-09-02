@@ -591,7 +591,7 @@ namespace ClassLibrary4
                     GUILayout.EndVertical();
                     GUILayout.EndHorizontal();
                     break;
-                case 5:
+                case 5: //spawners
                     GUILayout.BeginVertical();
                     GUILayout.Label("<b>Enemy spawner</b>", GUI.skin.label);
 
