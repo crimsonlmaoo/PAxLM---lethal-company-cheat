@@ -51,5 +51,6 @@ namespace ClassLibrary6.Toggles
         public bool w_players = false;
         public bool w_enemies = false;
         public bool w_ispawner = false;
+        public bool w_landmine = false;
     }
 }
