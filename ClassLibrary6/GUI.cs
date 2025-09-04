@@ -50,7 +50,6 @@ namespace ClassLibrary4
 
         //enums
         //thx lethal menu/icyrelic for the enemies struct!
-        //v1.0.3 will have this removed - not needed anymore
         public enum Enemies
         {
             Unknown,
@@ -145,7 +144,7 @@ namespace ClassLibrary4
         string message = "message";
         float cooldown = 0.3f;
         float lasttoggle = -1f;
-        string speedd = "speed amt";
+        float speedd = 1f;
 
         //for force emotes but it didn't work
         UnityEngine.InputSystem.InputAction.CallbackContext context;
@@ -203,6 +202,15 @@ namespace ClassLibrary4
                 {
                     show = !show;
                     lasttoggle = Time.time;
+                }
+            }
+
+            if (Toggles.inst.t_hearall)
+            {
+                foreach (PlayerControllerB players in FindObjectsOfType<PlayerControllerB>())
+                {
+                    players.currentVoiceChatAudioSource.minDistance = 0f;
+                    players.currentVoiceChatAudioSource.maxDistance = float.MaxValue;
                 }
             }
 
@@ -320,7 +328,7 @@ namespace ClassLibrary4
 
             if (Toggles.inst.t_speed)
             {
-                 localplayer.movementSpeed = speed;
+                 localplayer.movementSpeed = speedd;
             }
 
             if (Toggles.inst.t_lesp && localplayer != null && localplayer.gameplayCamera != null)
@@ -553,8 +561,8 @@ namespace ClassLibrary4
                     GUILayout.Label("- second release!\n- a LOT was added\n- no idea what works and what doesn't, but some might be host just yadada find out what works yourself.\nif any bugs or such found just reply on the thread", label);
                     break;
                 case 1: //self
-                    speedd = GUILayout.TextField(speedd);
-                    Toggles.inst.t_speed = GUILayout.Toggle(Toggles.inst.t_speed, "Change speed");
+                    speedd = GUILayout.HorizontalSlider(speedd, 1f, 20f);
+                    Toggles.inst.t_speed = GUILayout.Toggle(Toggles.inst.t_speed, $"Change speed ({speedd})");
                     Toggles.inst.t_fastclimb = GUILayout.Toggle(Toggles.inst.t_fastclimb, "Fast climb");
                     Toggles.inst.t_fly = GUILayout.Toggle(Toggles.inst.t_fly, "Velocity fly");
                     Toggles.inst.t_nodark = GUILayout.Toggle(Toggles.inst.t_nodark, "No dark/nightvision");
@@ -567,6 +575,7 @@ namespace ClassLibrary4
                     Toggles.inst.t_strong = GUILayout.Toggle(Toggles.inst.t_strong, "Strong");
                     Toggles.inst.t_fastheal = GUILayout.Toggle(Toggles.inst.t_fastheal, "Fast heal");
                     Toggles.inst.t_infreach = GUILayout.Toggle(Toggles.inst.t_infreach, "Inf reach");
+                    Toggles.inst.t_hearall = GUILayout.Toggle(Toggles.inst.t_hearall, "Hear all");
                     break;
                 case 2: //visuals
                     Toggles.inst.t_esp = GUILayout.Toggle(Toggles.inst.t_esp, "Enemy ESP");
