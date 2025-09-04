@@ -38,11 +38,15 @@ namespace ClassLibrary6.Windows
         static int selectedItemIndex = -1;
         static int selectedObjectIndex = -1;
         static int selectedPrefabIndex = -1;
+        static string val = "item value";
         static NetworkObject[] prefabs = Array.Empty<NetworkObject>();
         static NetworkObject[] objects = Array.Empty<NetworkObject>();
         static GrabbableObject[] items = Array.Empty<GrabbableObject>();
         static PlayerControllerB[] players = Array.Empty<PlayerControllerB>();
         static EnemyAI[] enemies = Array.Empty<EnemyAI>();
+        static Landmine[] landmines = Array.Empty<Landmine>();
+        static Vector2 scrollinglandmines = Vector2.zero;
+        static int selectedLandmineIndex = -1;
         static int selectedEnemyIndex = -1;
         static int selectedPlayerIndex = -1;
         static int selectedItemIndex2 = -1;
@@ -156,11 +160,9 @@ namespace ClassLibrary6.Windows
                         player.HealServerRpc();
                     }
 
-                    if (GUILayout.Button("Force emote", tabst))
+                    if (GUILayout.Button("Drop items", tabst))
                     {
-                        context.action.triggered.MustBeTrue();
-                        context.performed.MustBeTrue();
-                        player.PerformEmote(context, 1);
+                        player.DropAllHeldItemsServerRpc();
                     }
 
                     if (GUILayout.Button("Break game/delete", tabst))
@@ -217,7 +219,59 @@ namespace ClassLibrary6.Windows
 
             GUI.DragWindow(new Rect(0, 0, 10000, 10000));
         }
+        public static void Landmine(int windowid)
+        {
+            GUILayout.BeginHorizontal();
 
+            try
+            {
+                scrollinglandmines = GUILayout.BeginScrollView(scrollinglandmines, GUILayout.Width(300));
+                landmines = GameObject.FindObjectsOfType<Landmine>();
+
+                for (int i = 0; i < landmines.Length; i++)
+                {
+                    Landmine enemy = landmines[i];
+                    if (enemy == null) continue;
+
+                    if (GUILayout.Button($"{enemy.gameObject.name}", tabst))
+                    {
+                        selectedLandmineIndex = i;
+                    }
+                }
+            }
+            finally
+            {
+                GUILayout.EndScrollView();
+            }
+            GUILayout.BeginVertical();
+
+            if (selectedLandmineIndex >= 0 && selectedLandmineIndex < landmines.Length)
+            {
+                Landmine selected = landmines[selectedLandmineIndex];
+                if (selected != null)
+                {
+                    GUILayout.Label($"selected: {selected.gameObject.name}", label);
+
+                    if (GUILayout.Button("Detonate", tabst))
+                    {
+                        selected.ExplodeMineServerRpc();
+                    }
+                }
+                else
+                {
+                    GUILayout.Label("something went wrong! (something was null actually lol)", label);
+                }
+            }
+            else
+            {
+                GUILayout.Label("select an enemy", label);
+            }
+
+            GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
+
+            GUI.DragWindow(new Rect(0, 0, 10000, 10000));
+        }
         public static void EnemiesWindow(int windowid)
         {
             GUILayout.BeginHorizontal();
@@ -260,7 +314,7 @@ namespace ClassLibrary6.Windows
                     {
                         var self = GameNetworkManager.Instance.localPlayerController;
                         if (self != null)
-                            self.gameObject.transform.position = selected.gameObject.transform.position + new Vector3(2f, 0f, 2f);
+                            self.gameObject.transform.position = selected.transform.position + new Vector3(2f, 0f, 2f);
                     }
 
                     if (GUILayout.Button("Tp enemy", tabst))
@@ -268,8 +322,8 @@ namespace ClassLibrary6.Windows
                         var self = GameNetworkManager.Instance.localPlayerController;
                         if (self != null)
                         {
-                            selected.gameObject.transform.position = self.gameObject.transform.position + new Vector3(2f, 0f, 2f);
-                            selected.serverPosition = self.gameObject.transform.position;
+                            selected.gameObject.transform.position = self.transform.position + new Vector3(2f, 0f, 2f);
+                            selected.serverPosition = self.transform.position;
                             selected.SyncPositionToClients();
                         }
                     }
@@ -325,38 +379,39 @@ namespace ClassLibrary6.Windows
                 {
                     GUILayout.Label($"selected: {selected.itemProperties.itemName}", label);
 
-                    if (GUILayout.Button("Equip", tabst))
-                    {
-                        GameNetworkManager.Instance.localPlayerController.currentlyHeldObjectServer = selected;
-                    }
-
                     if (GUILayout.Button("Activate item", tabst))
                     {
+                        Notifications.Noti("Activated item!");
                         selected.ItemActivate(false);
                     }
 
                     if (GUILayout.Button("Set value max", tabst))
                     {
+                        Notifications.Noti("Set scrap value to max!");
                         selected.SetScrapValue(int.MaxValue);
                     }
 
                     if (GUILayout.Button("Remove charge", tabst))
                     {
+                        Notifications.Noti("Removed charge!");
                         selected.UseUpItemBatteriesServerRpc();
                     }
 
                     if (GUILayout.Button("Tp", tabst))
                     {
+                        Notifications.Noti("Teleported! Look down");
                         selected.targetFloorPosition = GameNetworkManager.Instance.localPlayerController.gameObject.transform.position;;
                     }
 
                     if (GUILayout.Button("Tp to", tabst))
                     {
+                        Notifications.Noti("Telported to item");
                         GameNetworkManager.Instance.localPlayerController.gameObject.transform.position = selected.gameObject.transform.position;
                     }
 
                     if (GUILayout.Button("Delete <color=red>(HOST)</color>", tabst))
                     {
+                        Notifications.Noti("Deleted!");
                         selected.NetworkObject.Despawn();
                     }
                 }
@@ -403,9 +458,11 @@ namespace ClassLibrary6.Windows
                 }
                 if (selectedItemIndex2 == itemIndex)
                 {
-                    if (GUILayout.Button("Spawn <color=red>HOST</color>", tabst, GUILayout.Width(80f)))
+                    if (GUILayout.Button("Spawn <color=red>HOST</color>", tabst, GUILayout.Width(110f)))
                     {
+                        Notifications.Noti("Spawned!");
                         var obj = GameObject.Instantiate(item.spawnPrefab, GameNetworkManager.Instance.localPlayerController.transform.position, Quaternion.identity);
+                        obj.GetComponent<GrabbableObject>().SetScrapValue(Stuff.inst.ParseInt(val));
                         var netobj = obj.GetComponent<NetworkObject>();
                         if (netobj != null)
                         {
@@ -419,6 +476,8 @@ namespace ClassLibrary6.Windows
 
             GUILayout.EndScrollView();
             GUILayout.EndVertical();
+            GUILayout.Label("item value", label);
+            val = GUILayout.TextField(val);
 
             GUI.DragWindow(new Rect(0, 0, 10000, 10000));
         }
@@ -448,6 +507,7 @@ namespace ClassLibrary6.Windows
 
                 if (selectedEnemyIndex == (int)enemyType)
                 {
+                    Notifications.Noti("Spawned!");
                     if (GUILayout.Button("Spawn", tabst, GUILayout.Width(80f)))
                     {
                         var roundman = RoundManager.Instance;
@@ -579,8 +639,9 @@ namespace ClassLibrary6.Windows
 
                     if (GUILayout.Button("Spawn <color=red>(HOST)</color>", tabst))
                     {
-                        if (!player.IsSpawned)
-                            player.Spawn();
+                        var obj = GameObject.Instantiate(player.gameObject, GameNetworkManager.Instance.localPlayerController.gameObject.transform.position, Quaternion.identity);
+                        obj.GetComponent<NetworkObject>().Spawn();
+                        Notifications.Noti("Spawned!");
                     }
                 }
                 else
