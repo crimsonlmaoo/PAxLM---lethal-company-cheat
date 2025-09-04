@@ -50,6 +50,7 @@ namespace ClassLibrary4
 
         //enums
         //thx lethal menu/icyrelic for the enemies struct!
+        //v1.0.3 will have this removed - not needed anymore
         public enum Enemies
         {
             Unknown,
