@@ -433,7 +433,7 @@ namespace ClassLibrary6.Windows
         }
         public static void ItemSpawner(int windowid)
         {
-            if (itemsList == null)
+            if (Time.frameCount % 10 == 0)
             {
                 itemsList = new List<Item>(Resources.FindObjectsOfTypeAll<Item>());
             }
