@@ -33,9 +33,12 @@ namespace ClassLibrary4
         Rect recttington6 = new Rect(100, 100, 800, 550);
         Rect recttington7 = new Rect(100, 100, 800, 550);
         Rect recttington8 = new Rect(100, 100, 800, 550);
+        Rect recttington9 = new Rect(100, 100, 800, 550);
+        Rect recttington10 = new Rect(100, 100, 800, 550);
+        Rect recttington11 = new Rect(100, 100, 800, 550);
         Rect recttington = new Rect(100, 100, 800, 550);
         int selected = 0;
-        string[] tabs = { "Home", "Self", "Visuals", "Misc", "Server",/*, "Logging",*/ "Settings", "Managers" };
+        string[] tabs = { "Home", "Self", "Visuals", "Misc", "Server", "Settings", "Managers" };
 
         //- style stuff -
         GUIStyle window;
@@ -141,6 +144,8 @@ namespace ClassLibrary4
         bool init;
         string hello = "damage amount";
         string healamt = "heal amount";
+        string messagetosay = "message";
+        string signalmessage = "signal message thing";
         string message = "message";
         float cooldown = 0.3f;
         float lasttoggle = -1f;
@@ -468,6 +473,11 @@ namespace ClassLibrary4
                 recttington8 = GUI.Window(8, recttington8, Managers.ItemSpawner, "Item spawner", window);
             }
 
+            if (Toggles.inst.w_landmine)
+            {
+                recttington9 = GUI.Window(9, recttington9, Managers.Landmine, "Landmines", window);
+            }
+
             RGB(recttington, 4);
             recttington = GUI.Window(0, recttington, ActualWindow, "PAxLM", window);
         }
@@ -681,19 +691,66 @@ namespace ClassLibrary4
                             }
                         }
                     }*/
-                    if (GUILayout.Button("Spam all ads"))
+
+                    bool test2 = GUILayout.Button("Break everyones game <color=red>(HOST)</color>", tabst);
+                    if (test2)
                     {
-                        if (HUDManager.Instance) return;
-                        for (int i = 0; i < 3; i++)
-                            HUDManager.Instance.CreateToolAdModelAndDisplayAdClientRpc(8, i);
-                    }
-                    if (GUILayout.Button("Start meteor shower", tabst))
-                    {
-                        foreach (MeteorShowers meteor in FindObjectsOfType<MeteorShowers>())
+                        foreach (Unity.Netcode.NetworkObject netObj in FindObjectsOfType<NetworkObject>())
                         {
-                            meteor.CreateMeteorServerRpc(meteor.GetComponent<Meteor>().landingTimer, meteor.GetComponent<Meteor>().landingPosition, meteor.GetComponent<Meteor>().skyDirection, meteor.GetComponent<Meteor>().scale);
+                            netObj.Despawn();
                         }
                     }
+
+                    bool test = GUILayout.Button("Destroy everyones game <color=red>(HOST)</color>", tabst);
+                    if (test)
+                    {
+                        foreach (NetworkObject objects in Stuff.inst.GetOwnedObjects())
+                        {
+                            objects.Despawn(true);
+                        }
+                    }
+
+                    bool spawnallenemies = GUILayout.Button("Spawn all enemies <color=red>(HOST)</color>", tabst);
+                    if (spawnallenemies)
+                    {
+                        foreach (EnemyAI enemy in Resources.FindObjectsOfTypeAll<EnemyAI>())
+                        {
+                            GameObject obj = Instantiate(enemy.gameObject, GameNetworkManager.Instance.localPlayerController.transform.position + new Vector3(2f, 0f, 2f), Quaternion.identity);
+                            obj.GetComponent<NetworkObject>().Spawn();
+                        }
+                    }
+
+                    bool tpallenemies = GUILayout.Button("Teleport all enemies <color=red>(HOST)</color>", tabst);
+                    if (tpallenemies)
+                    {
+                        foreach (EnemyAI enemy in FindObjectsOfType<EnemyAI>())
+                        {
+                            enemy.gameObject.transform.position = GameNetworkManager.Instance.localPlayerController.transform.position + new Vector3(2f, 0f, 2f);
+                            enemy.serverPosition = GameNetworkManager.Instance.localPlayerController.transform.position;
+                            enemy.SyncPositionToClients();
+                        }
+                    }
+
+                    bool strikeall = GUILayout.Button("Strike all <color=red>(HOST)</color>", tabst);
+                    if (strikeall)
+                    {
+                        foreach (PlayerControllerB player in FindObjectsOfType<PlayerControllerB>())
+                        {
+                            foreach (RoundManager roundman in FindObjectsOfType<RoundManager>())
+                            {
+                                roundman.LightningStrikeServerRpc(player.gameObject.transform.position);
+                            }
+                        }
+                    }
+
+                    bool endgame = GUILayout.Button("End game <color=red>(HOST)</color>", tabst);
+                    if (endgame)
+                    {
+                        StartOfRound.Instance.inShipPhase = true;
+                        StartOfRound.Instance.firingPlayersCutsceneRunning = false;
+                        StartOfRound.Instance.ManuallyEjectPlayersServerRpc();
+                    }
+
                     bool maybwork2 = GUILayout.Button("Break server <color=red>(HOST)</color>", tabst);
                     if (maybwork2)
                     {
@@ -717,11 +774,14 @@ namespace ClassLibrary4
                             }
                         }
                     }
-                    if (GUILayout.Button("Spawn meteor", tabst))
+
+                    if (GUILayout.Button("Spawn meteor <color=red>(HOST)</color>", tabst))
                     {
                         MeteorShowers meteor = FindObjectOfType<MeteorShowers>();
                         GameObject obj = Instantiate(meteor.meteorPrefab.gameObject, localplayer.gameObject.transform.position, Quaternion.identity);
+                        obj.GetComponent<NetworkObject>().Spawn();
                     }
+
                     bool tpallthings = GUILayout.Button("Teleport all items", tabst);
                     if (tpallthings)
                     {
@@ -743,6 +803,7 @@ namespace ClassLibrary4
                         }
                     }
 
+                    messagetosay = GUILayout.TextField(messagetosay);
                     bool makeallmessage = GUILayout.Button("Make all message", tabst);
                     if (makeallmessage)
                     {
@@ -750,17 +811,19 @@ namespace ClassLibrary4
                         {
                             for (int i = 0; i < 60; i++)
                             {
-                                hud.AddTextToChatOnServer("<color=red>IM FUCKING GEEKED HOLY SHIT</color>", playerId: i);
+                                hud.AddTextToChatOnServer(messagetosay, playerId: i);
                             }
                         }
                     }
 
-                    bool signaltranslator = GUILayout.Button("Send signaltranslator thing", tabst);
+                    signalmessage = GUILayout.TextField(signalmessage);
+
+                    bool signaltranslator = GUILayout.Button("Send signal", tabst);
                     if (signaltranslator)
                     {
                         foreach (HUDManager hud in FindObjectsOfType<HUDManager>())
                         {
-                            hud.UseSignalTranslatorServerRpc("Hi");
+                            hud.UseSignalTranslatorServerRpc(signalmessage);
                         }
                     }
 
@@ -797,7 +860,7 @@ namespace ClassLibrary4
                         }
                     }
 
-                    bool setalllevel = GUILayout.Button("Set all levels", tabst);
+                    bool setalllevel = GUILayout.Button("Set everyones level boss", tabst);
                     if (setalllevel)
                     {
                         foreach (HUDManager hud in FindObjectsOfType<HUDManager>())
@@ -806,15 +869,6 @@ namespace ClassLibrary4
                             {
                                 hud.SyncAllPlayerLevelsServerRpc(0, (int)player.actualClientId);
                             }
-                        }
-                    }
-
-                    bool hostserver = GUILayout.Button("Host game", tabst);
-                    if (hostserver)
-                    {
-                        foreach (MenuManager manager in FindObjectsOfType<MenuManager>())
-                        {
-                            manager.StartHosting();
                         }
                     }
 
@@ -839,15 +893,6 @@ namespace ClassLibrary4
                             {
                                 shipBuild.PlaceShipObjectServerRpc(new Vector3(1000000f, 100000f, 100000f), new Vector3(0f, 0f, 0f), netobj, 0);
                             }
-                        }
-                    }
-
-                    bool equiopall = GUILayout.Button("Equip all", tabst);
-                    if (equiopall)
-                    {
-                        foreach (GrabbableObject obj in FindObjectsOfType<GrabbableObject>())
-                        {
-                            localplayer.currentlyHeldObjectServer = obj;
                         }
                     }
 
@@ -881,14 +926,6 @@ namespace ClassLibrary4
                         }
                     }
 
-                    bool endgame = GUILayout.Button("End game <color=red>(HOST)</color>", tabst);
-                    if (endgame)
-                    {
-                        StartOfRound.Instance.inShipPhase = true;
-                        StartOfRound.Instance.firingPlayersCutsceneRunning = false;
-                        StartOfRound.Instance.ManuallyEjectPlayersServerRpc();
-                    }
-
                     bool endgame2 = GUILayout.Button("End game 2", tabst);
                     if (endgame2)
                     {
@@ -899,18 +936,6 @@ namespace ClassLibrary4
                     if (endgame3)
                     {
                         StartOfRound.Instance.EndGameServerRpc(0);
-                    }
-
-                    bool strikeall = GUILayout.Button("Strike all <color=red>(HOST)</color>", tabst);
-                    if (strikeall)
-                    {
-                        foreach (PlayerControllerB player in FindObjectsOfType<PlayerControllerB>())
-                        {
-                            foreach (RoundManager roundman in FindObjectsOfType<RoundManager>())
-                            {
-                                roundman.LightningStrikeServerRpc(player.gameObject.transform.position);
-                            }
-                        }
                     }
 
                     bool deleteallitems = GUILayout.Button("Delete all items", tabst);
@@ -925,67 +950,54 @@ namespace ClassLibrary4
                         }
                     }
 
-                    bool spawnallenemies = GUILayout.Button("Spawn all enemies <color=red>(HOST)</color>", tabst);
-                    if (spawnallenemies)
+                    if (GUILayout.Button("Unlock all doors", tabst))
                     {
-                        /*foreach (RoundManager spawn in FindObjectsOfType<RoundManager>())
+                        foreach (DoorLock land in FindObjectsOfType<DoorLock>())
                         {
-                            //for (int i = 0; i < 27; i++)
-                                //spawn.SpawnEnemyOnServer(GameNetworkManager.Instance.localPlayerController.transform.position, 0, i);
-                        }*/
-                        foreach (EnemyAI enemy in Resources.FindObjectsOfTypeAll<EnemyAI>())
-                        {
-                            GameObject obj = Instantiate(enemy.gameObject, GameNetworkManager.Instance.localPlayerController.transform.position + new Vector3(2f, 0f, 2f), Quaternion.identity);
-                            obj.GetComponent<NetworkObject>().Spawn();
+                            land.UnlockDoorServerRpc();
                         }
                     }
 
-                    bool tpallenemies = GUILayout.Button("Teleport all enemies <color=red>(HOST)</color>", tabst);
-                    if (tpallenemies)
+
+                    if (GUILayout.Button("Open all doors", tabst))
                     {
-                        foreach (EnemyAI enemy in FindObjectsOfType<EnemyAI>())
+                        foreach (DoorLock land in FindObjectsOfType<DoorLock>())
                         {
-                            enemy.gameObject.transform.position = GameNetworkManager.Instance.localPlayerController.transform.position + new Vector3(2f, 0f, 2f);
-                            enemy.serverPosition = GameNetworkManager.Instance.localPlayerController.transform.position;
-                            enemy.SyncPositionToClients();
+                            land.OpenDoorAsEnemyServerRpc();
                         }
                     }
 
-                    bool playaudio = GUILayout.Button("SS Audio test", tabst);
-                    if (playaudio)
+                    if (GUILayout.Button("Close all doors", tabst))
                     {
-                        foreach (GlobalEffects speaker in FindObjectsOfType<GlobalEffects>())
+                        foreach (DoorLock land in FindObjectsOfType<DoorLock>())
                         {
-                            foreach (AudioSource audio in FindObjectsOfType<AudioSource>())
-                            {
-                                audio.volume = 10000;
-                                ServerAudio sa = new ServerAudio
-                                {
-                                    audioObj = audio.gameObject
-                                };
-                                speaker.PlayAudioServerFromSenderObject(sa);
-                            }
+                            land.CloseDoorNonPlayerServerRpc();
                         }
                     }
 
-                    bool test2 = GUILayout.Button("Break everyones game <color=red>(HOST)</color>", tabst);
-                    if (test2)
+                    if (GUILayout.Button("Explode all landmines", tabst))
                     {
-                        foreach (Unity.Netcode.NetworkObject netObj in FindObjectsOfType<NetworkObject>())
+                        foreach (Landmine land in FindObjectsOfType<Landmine>())
                         {
-                            netObj.Despawn();
+                            land.ExplodeMineServerRpc();
                         }
                     }
 
-                    bool test = GUILayout.Button("Destroy everyones game <color=red>(HOST)</color>", tabst);
-                    if (test)
+                    if (GUILayout.Button("Open all giftboxes", tabst))
                     {
-                        foreach (NetworkObject objects in Stuff.inst.GetOwnedObjects())
+                        foreach (GiftBoxItem gift in FindObjectsOfType<GiftBoxItem>())
                         {
-                            objects.Despawn(true);
+                            gift.OpenGiftBoxServerRpc();
                         }
                     }
 
+                    if (GUILayout.Button("Create mimics <color=red>(MASK NEEDED + HOST)</color>", tabst))
+                    {
+                        foreach (HauntedMaskItem mask in FindObjectsOfType<HauntedMaskItem>())
+                        {
+                            mask.CreateMimicServerRpc(false, GameNetworkManager.Instance.localPlayerController.gameObject.transform.position);
+                        }
+                    }
                     GUILayout.EndScrollView();
                     break;
                 case 5: //settings
@@ -1025,6 +1037,7 @@ namespace ClassLibrary4
                     Toggles.inst.w_pexplorer = GUILayout.Toggle(Toggles.inst.w_pexplorer, "Prefab explorer");
                     Toggles.inst.w_spawners = GUILayout.Toggle(Toggles.inst.w_spawners, "Enemy spawner");
                     Toggles.inst.w_ispawner = GUILayout.Toggle(Toggles.inst.w_ispawner, "Item spawner");
+                    Toggles.inst.w_landmine = GUILayout.Toggle(Toggles.inst.w_landmine, "Landmine manager");
                     break;
             }
 
