@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,8 +14,9 @@ namespace ClassLibrary6.Toggles
         public bool p_mon = false;
         //misc
         public bool spamhorn = false;
-
         //player
+        public bool t_speed = false;
+        public bool t_fastclimb = false;
         public bool t_fly = false;
         public bool t_infammo = false;
         public bool t_infstam = false;
@@ -27,11 +28,27 @@ namespace ClassLibrary6.Toggles
         public bool t_strong = false;
         public bool t_fastheal = false;
         public bool t_infreach = false;
+        //idk
+        public bool t_tvspz = false;
+        public bool t_spazlights = false;
         //esps
         public bool t_esp = false;
         public bool t_tesp = false;
         public bool t_pesp = false;
         public bool t_ttesp = false;
         public bool t_lesp = false;
+        //op
+        public bool t_rigspam = false;
+        //settings
+        public bool t_time = false;
+        //managers
+        public bool w_moons = false;
+        public bool w_explorer = false;
+        public bool w_pexplorer = false;
+        public bool w_items = false;
+        public bool w_spawners = false;
+        public bool w_players = false;
+        public bool w_enemies = false;
+        public bool w_ispawner = false;
     }
 }
