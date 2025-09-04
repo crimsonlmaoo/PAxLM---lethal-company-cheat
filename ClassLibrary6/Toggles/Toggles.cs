@@ -28,6 +28,7 @@ namespace ClassLibrary6.Toggles
         public bool t_strong = false;
         public bool t_fastheal = false;
         public bool t_infreach = false;
+        public bool t_hearall = false;
         //idk
         public bool t_tvspz = false;
         public bool t_spazlights = false;
