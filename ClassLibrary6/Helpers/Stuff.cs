@@ -1,4 +1,4 @@
-﻿using GameNetcodeStuff;
+using GameNetcodeStuff;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,7 +39,6 @@ namespace ClassLibrary6.Helpers
         {
             return HUDManager.Instance;
         }
-        //DUDE these 2 are useless my dumbass made it loop causing a crash
         public PlayerControllerB GetPlayer()
         {
             return GetPlayer();
@@ -47,6 +46,30 @@ namespace ClassLibrary6.Helpers
         public PlayerLevel GetLevel()
         {
             return GetLevel();
+        }
+
+        public int ParseInt(string val)
+        {
+            int.TryParse(val, out int v);
+            return v;
+        }
+
+        public float ParseFloat(string val)
+        {
+            float.TryParse(val, out float v);
+            return v;
+        }
+
+        public double ParseDouble(string val)
+        {
+            double.TryParse(val, out double v);
+            return v;
+        }
+
+        public bool ParseBool(string val)
+        {
+            bool.TryParse(val, out bool v);
+            return v;
         }
     }
 }
