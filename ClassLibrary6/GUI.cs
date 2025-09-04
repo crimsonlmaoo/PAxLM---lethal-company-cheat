@@ -727,8 +727,7 @@ namespace ClassLibrary4
                     {
                         foreach (GrabbableObject grabbable in FindObjectsOfType<GrabbableObject>())
                         {
-                            grabbable.transform.position = GameNetworkManager.Instance.localPlayerController.gameObject.transform.position;;
-                            grabbable.parentObject.gameObject.transform.position = GameNetworkManager.Instance.localPlayerController.gameObject.transform.position;;
+                            grabbable.targetFloorPosition = GameNetworkManager.Instance.localPlayerController.gameObject.transform.position;
                         }
                     }
 
@@ -885,32 +884,21 @@ namespace ClassLibrary4
                     bool endgame = GUILayout.Button("End game <color=red>(HOST)</color>", tabst);
                     if (endgame)
                     {
-                        foreach (StartOfRound round in FindObjectsOfType<StartOfRound>())
-                        {
-                            round.inShipPhase = true;
-                            round.firingPlayersCutsceneRunning = false;
-                            round.ManuallyEjectPlayersServerRpc();
-                        }
+                        StartOfRound.Instance.inShipPhase = true;
+                        StartOfRound.Instance.firingPlayersCutsceneRunning = false;
+                        StartOfRound.Instance.ManuallyEjectPlayersServerRpc();
                     }
 
                     bool endgame2 = GUILayout.Button("End game 2", tabst);
                     if (endgame2)
                     {
-                        foreach (StartOfRound hi in FindObjectsOfType<StartOfRound>())
-                        {
-                            hi.EndOfGameClientRpc(40, 50, StartOfRound.Instance.connectedPlayersAmount, StartOfRound.Instance.scrapCollectedLastRound);
-                        }
+                        StartOfRound.Instance.EndOfGameClientRpc(40, 50, StartOfRound.Instance.connectedPlayersAmount, StartOfRound.Instance.scrapCollectedLastRound);
                     }
 
-                    bool makeallemote = GUILayout.Button("Make all emote", tabst);
-                    if (makeallemote)
+                    bool endgame3 = GUILayout.Button("End game 3", tabst);
+                    if (endgame3)
                     {
-                        foreach (PlayerControllerB player in FindObjectsOfType<PlayerControllerB>())
-                        {
-                            context.performed.Equals(true);
-                            for (int i = 0; i < 5; i++)
-                                player.PerformEmote(context, i);
-                        }
+                        StartOfRound.Instance.EndGameServerRpc(0);
                     }
 
                     bool strikeall = GUILayout.Button("Strike all <color=red>(HOST)</color>", tabst);
