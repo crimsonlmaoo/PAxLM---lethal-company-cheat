@@ -1,5 +1,6 @@
 using ClassLibrary6.Helpers;
 using ClassLibrary6.Toggles;
+using ClassLibrary6.Windows;
 using DigitalRuby.ThunderAndLightning;
 using GameNetcodeStuff;
 using HarmonyLib;
@@ -7,6 +8,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -16,15 +18,24 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Device;
 using UnityEngine.InputSystem;
+using static IngamePlayerSettings;
 
 namespace ClassLibrary4
 {
     public class gui : MonoBehaviour
     {
         //gui stuff
+        Rect recttington2 = new Rect(100, 100, 800, 550);
+        Rect recttington1 = new Rect(100, 100, 800, 550);
+        Rect recttington3 = new Rect(100, 100, 800, 550);
+        Rect recttington4 = new Rect(100, 100, 800, 550);
+        Rect recttington5 = new Rect(100, 100, 800, 550);
+        Rect recttington6 = new Rect(100, 100, 800, 550);
+        Rect recttington7 = new Rect(100, 100, 800, 550);
+        Rect recttington8 = new Rect(100, 100, 800, 550);
         Rect recttington = new Rect(100, 100, 800, 550);
         int selected = 0;
-        string[] tabs = { "Home", "Self", "Visuals", "Players", "Enemies", "Spawners", "Shop/Company", "Server", "Logging", "Settings" };
+        string[] tabs = { "Home", "Self", "Visuals", "Misc", "Server",/*, "Logging",*/ "Settings", "Managers" };
 
         //- style stuff -
         GUIStyle window;
@@ -38,6 +49,7 @@ namespace ClassLibrary4
         Texture2D pixel;
 
         //enums
+        //thx lethal menu/icyrelic for the enemies struct!
         public enum Enemies
         {
             Unknown,
@@ -79,10 +91,13 @@ namespace ClassLibrary4
 
         //indexes and more
         EnemyAI[] enemies = Array.Empty<EnemyAI>();
+        GrabbableObject[] items = Array.Empty<GrabbableObject>();
         int selectedEnemyIndex = -1;
         int selectedPlayerIndex = -1;
-        int selecteEnemySpawnIndex = -1;
+        int selectedItemIndex = -1;
+        int selectedObjectIndex = -1;
         PlayerControllerB[] players = Array.Empty<PlayerControllerB>();
+        NetworkObject[] objects = Array.Empty<NetworkObject>();
 
         //instances/classes
         RoundManager roundManager => RoundManager.Instance;
@@ -110,6 +125,13 @@ namespace ClassLibrary4
         List<ShotgunItem> shotguns => FindObjectsOfType<ShotgunItem>().ToList();
         List<Camera> cameras => FindObjectsOfType<Camera>().ToList();
 
+        //caching
+        List<Landmine> landmines = null;
+        List<Turret> turrets = null;
+        List<GrabbableObject> grabbabless = null;
+        List<PlayerControllerB> playerss = null;
+        List<EnemyAI> enemiess = null;
+
         //harmony
         Harmony harm = new Harmony("com.ClassLibrary4.patching");
 
@@ -122,12 +144,16 @@ namespace ClassLibrary4
         string message = "message";
         float cooldown = 0.3f;
         float lasttoggle = -1f;
+        string speedd = "speed amt";
 
         //for force emotes but it didn't work
         UnityEngine.InputSystem.InputAction.CallbackContext context;
 
         //caching for optimization - probably doesn't work but was an attempt at it
         static Dictionary<string, Vector2> caching = new Dictionary<string, Vector2>();
+
+        //noti stuff
+        private HashSet<string> alreadynotid = new HashSet<string>();
 
         //fps stuff
         WaitForSecondsRealtime waitfor;
@@ -151,6 +177,25 @@ namespace ClassLibrary4
 
         void Update()
         {
+            foreach (var field in typeof(Toggles).GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+            {
+                if (field.FieldType == typeof(bool))
+                {
+                    bool toggleValue = (bool)field.GetValue(Toggles.inst);
+                    string toggleName = field.Name;
+
+                    if (toggleValue && !alreadynotid.Contains(toggleName))
+                    {
+                        Notifications.Noti("Enabled/executed!");
+                        alreadynotid.Add(toggleName);
+                    }
+                    else if (!toggleValue && alreadynotid.Contains(toggleName))
+                    {
+                        alreadynotid.Remove(toggleName);
+                    }
+                }
+            }
+
             if (Keyboard.current.insertKey.isPressed)
             {
                 if (Time.time - lasttoggle > cooldown)
@@ -160,14 +205,37 @@ namespace ClassLibrary4
                 }
             }
 
+            if (Toggles.inst.t_spazlights)
+            {
+                ShipLights[] lights = FindObjectsOfType<ShipLights>();
+                foreach (ShipLights light in lights)
+                {
+                    light.SetShipLightsServerRpc(false);
+                    Task.Delay(1000);
+                    light.SetShipLightsServerRpc(true);
+                }
+            }
+
+            if (Toggles.inst.t_tvspz)
+            {
+                foreach (TVScript tVScript in FindObjectsOfType<TVScript>())
+                {
+                    tVScript.TurnOffTVServerRpc();
+                    tVScript.TurnOnTVServerRpc();
+                }
+            }
+
             if (Toggles.inst.t_fly)
             {
-                Rigidbody rb = localplayer.gameObject.GetComponent<Rigidbody>();
-                if (rb != null)
+                if (Keyboard.current.wKey.isPressed)
                 {
-                    Vector3 force = new Vector3(10f, 20f, 10f);
-                    rb.AddForce(force, ForceMode.Impulse);
+                    localplayer.playerRigidbody.AddForce(localplayer.gameplayCamera.transform.forward * 10f, ForceMode.VelocityChange);
                 }
+            }
+
+            if (Toggles.inst.t_fastclimb)
+            {
+                localplayer.climbSpeed = 99f;
             }
 
             if (Toggles.inst.t_infstam)
@@ -179,7 +247,7 @@ namespace ClassLibrary4
 
             if (Toggles.inst.t_infhealth)
             {
-                localplayer.health = 9999999;
+                localplayer.health = int.MaxValue;
             }
 
             if (Toggles.inst.t_infcharge && localplayer.currentlyHeldObjectServer?.insertedBattery != null)
@@ -200,7 +268,7 @@ namespace ClassLibrary4
 
             if (Toggles.inst.t_infreach)
             {
-                localplayer.grabDistance = 999999999f;
+                localplayer.grabDistance = int.MaxValue;
             }
 
             if (Toggles.inst.t_noweight)
@@ -217,10 +285,7 @@ namespace ClassLibrary4
 
             if (Toggles.inst.t_infammo)
             {
-                foreach (ShotgunItem gun in FindObjectsOfType<ShotgunItem>())
-                {
-                    gun.shellsLoaded = 9999;
-                }
+                localplayer.currentlyHeldObjectServer.GetComponent<ShotgunItem>().shellsLoaded = int.MaxValue;
             }
 
             if (Toggles.inst.t_nodark)
@@ -235,15 +300,34 @@ namespace ClassLibrary4
         {
             if (!init)
             {
+                Managers.InitMyTexsBruh();
                 header = new GUIStyle(GUI.skin.label);
                 header.normal.textColor = new Color(255.0f, 0f, 255.0f);
                 header.fontSize = 16;
                 header.fontStyle = FontStyle.Bold;
+
+                GUIStyle slide = new GUIStyle(GUI.skin.horizontalSlider);
+                slide.normal.background = Tex(20, 20, Color.black);
+
+                GUIStyle thhumb = new GUIStyle(GUI.skin.horizontalSliderThumb);
+                thhumb.normal.background = Tex(10, 10, Color.red);
+                thhumb.fixedWidth = 20;
+
+                GUI.skin.horizontalSlider = slide;
+                GUI.skin.horizontalSliderThumb = thhumb;
             }
+
+            if (Toggles.inst.t_speed)
+            {
+                 localplayer.movementSpeed = speed;
+            }
+
             if (Toggles.inst.t_lesp && localplayer != null && localplayer.gameplayCamera != null)
             {
+                if (Time.frameCount % 10 == 0)
+                { landmines = new List<Landmine>(FindObjectsOfType<Landmine>()); }
                 Draw(
-                    GameObject.FindObjectsOfType<Landmine>().Select(e => e.gameObject),
+                    landmines.Select(e => e.gameObject),
                     localplayer,
                     obj => "Landmine",
                     obj => Color.red,
@@ -252,8 +336,10 @@ namespace ClassLibrary4
             }
             if (Toggles.inst.t_ttesp && localplayer != null && localplayer.gameplayCamera != null)
             {
+                if (Time.frameCount % 10 == 0)
+                { turrets = new List<Turret>(FindObjectsOfType<Turret>()); }
                 Draw(
-                    GameObject.FindObjectsOfType<Turret>().Select(e => e.gameObject),
+                    turrets.Select(e => e.gameObject),
                     localplayer,
                     obj => "Turret",
                     obj => Color.red,
@@ -262,18 +348,29 @@ namespace ClassLibrary4
             }
             if (Toggles.inst.t_tesp && localplayer != null && localplayer.gameplayCamera != null)
             {
+                if (Time.frameCount % 10 == 0)
+                {
+                    grabbabless = new List<GrabbableObject>(FindObjectsOfType<GrabbableObject>());
+                }
                 Draw(
-                    GameObject.FindObjectsOfType<GrabbableObject>().Select(e => e.gameObject),
+                    grabbabless.Select(g => g.gameObject),
                     localplayer,
-                    obj => obj.GetComponent<GrabbableObject>().itemProperties.itemName,
+                    obj =>
+                    {
+                        var grab = obj.GetComponent<GrabbableObject>();
+                        return grab != null ? grab.itemProperties.itemName : null;
+                    },
                     obj => Color.magenta,
                     true
                 );
             }
             if (Toggles.inst.t_pesp && localplayer != null && localplayer.gameplayCamera != null)
             {
+                if (Time.frameCount % 10 == 0) { 
+                    playerss = new List<PlayerControllerB>(FindObjectsOfType<PlayerControllerB>());
+                    }
                 Draw(
-                    GameObject.FindObjectsOfType<PlayerControllerB>().Select(e => e.gameObject),
+                    playerss.Select(e => e.gameObject),
                     localplayer,
                     obj => obj.GetComponent<PlayerControllerB>().playerUsername,
                     obj => Color.blue,
@@ -282,8 +379,12 @@ namespace ClassLibrary4
             }
             if (Toggles.inst.t_esp && localplayer != null && localplayer.gameplayCamera != null)
             {
+                if (Time.frameCount % 10 == 0)
+                {
+                    enemiess = new List<EnemyAI>(FindObjectsOfType<EnemyAI>());
+                }
                 Draw(
-                    GameObject.FindObjectsOfType<EnemyAI>().Select(e => e.gameObject),
+                    enemiess.Select(e => e.gameObject),
                     localplayer,
                     obj => obj.GetComponent<EnemyAI>().enemyType.enemyName,
                     obj => Color.red,
@@ -292,12 +393,72 @@ namespace ClassLibrary4
             }
             string[] mods = new string[]
             {
-                    Toggles.inst.spamhorn ? "Spam horn" : null
+                    Toggles.inst.spamhorn ? "Spam horn" : null,
+                    Toggles.inst.t_fly ? "Velocity fly" : null,
+                    Toggles.inst.t_nodark ? "No dark/nightvision" : null,
+                    Toggles.inst.t_infammo ? "Inf shotgun ammo" : null,
+                    Toggles.inst.t_infhealth ? "Inf health" : null,
+                    Toggles.inst.t_infstam ? "Inf stamina" : null,
+                    Toggles.inst.t_infcharge ? "Inf battery charge" : null,
+                    Toggles.inst.t_chargeany ? "Charge anything" : null,
+                    Toggles.inst.t_noweight ? "No item weight" : null,
+                    Toggles.inst.t_strong ? "Strong" : null,
+                    Toggles.inst.t_fastheal ? "Fast heal" : null,
+                    Toggles.inst.t_infreach ? "Inf reach" : null,
+                    Toggles.inst.t_esp ? "Enemy ESP" : null,
+                    Toggles.inst.t_pesp ? "Player ESP" : null,
+                    Toggles.inst.t_tesp ? "Item ESP" : null,
+                    Toggles.inst.t_ttesp ? "Turret ESP" : null,
+                    Toggles.inst.t_lesp ? "Landmine ESP" : null,
+                    Toggles.inst.t_time ? "Better timer" : null,
             };
 
             string enableds = string.Join("\n", mods.Where(name => name != null));
-            GUI.Label(new Rect(0, 10, UnityEngine.Screen.width, 80), $"PAxLM - created by crimsonh - version 1.0.0 - {fpsbr} fps\n\n{enableds}", header);
-            if (!show) return;
+            if (!Toggles.inst.t_time)
+            {
+                GUI.Label(new Rect(0, 10, UnityEngine.Screen.width, 200), $"PAxLM - created by crimsonh - version 1.0.2\n - {fpsbr} fps\n\n{enableds}", header);
+            }
+            else
+            {
+                //currentDayTime
+                GUI.Label(new Rect(0, 10, UnityEngine.Screen.width, 200), $"PAxLM - created by crimsonh - version 1.0.2\n{TimeOfDay.Instance.currentDayTime}\n - {fpsbr} fps\n\n{enableds}", header);
+            }
+
+            if (!show)
+                return;
+            if (Toggles.inst.w_spawners)
+            {
+                recttington1 = GUI.Window(1, recttington1, Managers.Spawners, "Enemy spawner", window);
+            }
+            if (Toggles.inst.w_explorer)
+            {
+                recttington2 = GUI.Window(2, recttington2, Managers.Explorer, "Scene explorer", window);
+            }
+            if (Toggles.inst.w_pexplorer)
+            {
+                recttington3 = GUI.Window(3, recttington3, Managers.PrefabExplorer, "Prefab explorer", window);
+            }
+            if (Toggles.inst.w_enemies)
+            {
+                recttington4 = GUI.Window(4, recttington4, Managers.EnemiesWindow, "Enemies", window);
+            }
+            if (Toggles.inst.w_items)
+            {
+                recttington5 = GUI.Window(5, recttington5, Managers.Items, "Items", window);
+            }
+            if (Toggles.inst.w_players)
+            {
+                recttington6 = GUI.Window(6, recttington6, Managers.Players, "Players", window);
+            }
+            if (Toggles.inst.w_moons)
+            {
+                recttington7 = GUI.Window(7, recttington7, Managers.Moons, "Moons", window);
+            }
+            if  (Toggles.inst.w_ispawner)
+            {
+                recttington8 = GUI.Window(8, recttington8, Managers.ItemSpawner, "Item spawner", window);
+            }
+
             RGB(recttington, 4);
             recttington = GUI.Window(0, recttington, ActualWindow, "PAxLM", window);
         }
@@ -307,9 +468,9 @@ namespace ClassLibrary4
         {
             foreach (Terminal term in FindObjectsOfType<Terminal>())
             {
+                term.groupCredits = int.MaxValue;
                 term.orderedItemsFromTerminal.AddRange(boughtItems.ToList());
-                term.groupCredits = 999999999;
-                term.SyncGroupCreditsClientRpc(999999999, boughtItems.Length);
+                term.SyncGroupCreditsClientRpc(int.MaxValue, boughtItems.Length);
             }
         }
         void ActualWindow(int winid)
@@ -388,9 +549,12 @@ namespace ClassLibrary4
 
                     GUILayout.Space(20);
                     GUILayout.Label("Changelog", header);
-                    GUILayout.Label("- first release!\n- no idea what works and what doesn't, but some might be host just yadada find out what works yourself.\nif any bugs or such found just reply on the thread", label);
+                    GUILayout.Label("- second release!\n- a LOT was added\n- no idea what works and what doesn't, but some might be host just yadada find out what works yourself.\nif any bugs or such found just reply on the thread", label);
                     break;
                 case 1: //self
+                    speedd = GUILayout.TextField(speedd);
+                    Toggles.inst.t_speed = GUILayout.Toggle(Toggles.inst.t_speed, "Change speed");
+                    Toggles.inst.t_fastclimb = GUILayout.Toggle(Toggles.inst.t_fastclimb, "Fast climb");
                     Toggles.inst.t_fly = GUILayout.Toggle(Toggles.inst.t_fly, "Velocity fly");
                     Toggles.inst.t_nodark = GUILayout.Toggle(Toggles.inst.t_nodark, "No dark/nightvision");
                     Toggles.inst.t_infammo = GUILayout.Toggle(Toggles.inst.t_infammo, "Inf shotgun ammo");
@@ -410,227 +574,7 @@ namespace ClassLibrary4
                     Toggles.inst.t_ttesp = GUILayout.Toggle(Toggles.inst.t_ttesp, "Turret ESP");
                     Toggles.inst.t_lesp = GUILayout.Toggle(Toggles.inst.t_lesp, "Landmine ESP");
                     break;
-                case 3: //players
-                    GUILayout.BeginHorizontal();
-
-                    try
-                    {
-                        scrollingplayers = GUILayout.BeginScrollView(scrollingplayers, GUILayout.Width(300));
-                        players = FindObjectsOfType<PlayerControllerB>();
-
-                        for (int i = 0; i < players.Length; i++)
-                        {
-                            var player = players[i];
-                            if (player == null) continue;
-
-                            if (GUILayout.Button($"player: {player.playerUsername} | hp: {player.health}", tabst))
-                            {
-                                selectedPlayerIndex = i;
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        GUILayout.EndScrollView();
-                    }
-
-                    GUILayout.BeginVertical();
-
-                    if (selectedPlayerIndex >= 0 && selectedPlayerIndex < players.Length)
-                    {
-                        var player = players[selectedPlayerIndex];
-                        if (player != null)
-                        {
-                            GUILayout.Label($"selected: {player.playerUsername} | id: {player.actualClientId} | health: {player.health}", label);
-
-                            if (player.ItemSlots != null)
-                            {
-                                foreach (var item in player.ItemSlots)
-                                {
-                                    if (item == null) continue;
-                                    GUILayout.Label($"value: {item.scrapValue} | item: {item.name}", label);
-                                    Debug.Log($"value: {item.scrapValue} | item: {item.name}");
-                                }
-                            }
-
-                            if (GUILayout.Button("Kill", tabst))
-                            {
-                                player.KillPlayer(new Vector3(100f, 100f, 100f));
-                            }
-                            GUILayout.Label("Dmg amount");
-                            hello = GUILayout.TextField(hello);
-                            if (GUILayout.Button("Damage", tabst))
-                            {
-                                if (int.TryParse(hello, out int dmg))
-                                    player.DamagePlayer(dmg);
-                            }
-                            GUILayout.Label("Heal amt");
-                            healamt = GUILayout.TextField(healamt);
-                            if (GUILayout.Button("Heal", tabst))
-                            {
-                                player.HealServerRpc();
-                            }
-
-                            if (GUILayout.Button("Force emote", tabst))
-                            {
-                                player.PerformEmote(context, 1);
-                            }
-
-                            if (GUILayout.Button("Delete items <color=red>(HOST)</color>", tabst))
-                            {
-                                player.DestroyItemInSlotAndSync(0);
-                                player.DestroyItemInSlotAndSync(1);
-                                player.DestroyItemInSlotAndSync(2);
-                                player.DestroyItemInSlotAndSync(3);
-                            }
-
-                            if (GUILayout.Button("Tp to", tabst))
-                            {
-                                var self = Stuff.inst.GetSelf();
-                                if (self != null)
-                                    self.transform.position = player.transform.position + new Vector3(2f, 0f, 2f);
-                            }
-
-                            if (GUILayout.Button("Strike", tabst))
-                            {
-                                foreach (var roundman in FindObjectsOfType<RoundManager>())
-                                {
-                                    roundman.LightningStrikeServerRpc(player.transform.position);
-                                }
-                            }
-                            GUILayout.Label("Msg to send");
-                            message = GUILayout.TextField(message);
-
-                            if (GUILayout.Button("Send message"))
-                            {
-                                foreach (HUDManager hud in FindObjectsOfType<HUDManager>())
-                                {
-                                    hud.AddTextToChatOnServer(message, playerId: (int)player.actualClientId);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            GUILayout.Label("whoever you selected is null! something went wrong.", label);
-                        }
-                    }
-                    else
-                    {
-                        GUILayout.Label("select someone", label);
-                    }
-
-                    GUILayout.EndVertical();
-                    GUILayout.EndHorizontal();
-                    break;
-                case 4: //enemies
-                    GUILayout.BeginHorizontal();
-
-                    try
-                    {
-                        scrolling = GUILayout.BeginScrollView(scrolling, GUILayout.Width(300));
-                        enemies = FindObjectsOfType<EnemyAI>();
-
-                        for (int i = 0; i < enemies.Length; i++)
-                        {
-                            EnemyAI enemy = enemies[i];
-                            if (enemy == null) continue;
-
-                            if (GUILayout.Button($"{enemy.enemyType.enemyName}", tabst))
-                            {
-                                selectedEnemyIndex = i;
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        GUILayout.EndScrollView();
-                    }
-
-                    GUILayout.BeginVertical();
-
-                    if (selectedEnemyIndex >= 0 && selectedEnemyIndex < enemies.Length)
-                    {
-                        EnemyAI selected = enemies[selectedEnemyIndex];
-                        if (selected != null)
-                        {
-                            GUILayout.Label($"selected: {selected.enemyType.enemyName}", label);
-
-                            if (GUILayout.Button("Kill", tabst))
-                            {
-                                selected.KillEnemyServerRpc(true);
-                            }
-
-                            if (GUILayout.Button("Tp to", tabst))
-                            {
-                                var self = Stuff.inst.GetSelf();
-                                if (self != null)
-                                    self.transform.position = selected.transform.position + new Vector3(2f, 0f, 2f);
-                            }
-
-                            if (GUILayout.Button("Tp enemy", tabst))
-                            {
-                                var self = Stuff.inst.GetSelf();
-                                if (self != null)
-                                {
-                                    selected.transform.position = self.transform.position + new Vector3(2f, 0f, 2f);
-                                    selected.serverPosition = self.transform.position;
-                                    selected.SyncPositionToClients();
-                                }
-                            }
-                        }
-                        else
-                        {
-                            GUILayout.Label("something went wrong! (something was null actually lol)", label);
-                        }
-                    }
-                    else
-                    {
-                        GUILayout.Label("select an enemy", label);
-                    }
-
-                    GUILayout.EndVertical();
-                    GUILayout.EndHorizontal();
-                    break;
-                case 5: //spawners
-                    GUILayout.BeginVertical();
-                    GUILayout.Label("<b>Enemy spawner</b>", GUI.skin.label);
-
-                    scrolling = GUILayout.BeginScrollView(scrolling);
-
-                    foreach (Enemies enemyType in Enum.GetValues(typeof(Enemies)))
-                    {
-                        if (enemyType == Enemies.Unknown) continue;
-
-                        GUILayout.BeginHorizontal();
-
-                        if (GUILayout.Button(enemyType.ToString(), tabst, GUILayout.Width(200f)))
-                        {
-                            selectedEnemyIndex = (int)enemyType;
-                        }
-
-                        if (selectedEnemyIndex == (int)enemyType)
-                        {
-                            if (GUILayout.Button("Spawn", tabst, GUILayout.Width(80f)))
-                            {
-                                var roundman = RoundManager.Instance;
-                                if (roundman != null)
-                                {
-                                    roundman.SpawnEnemyOnServer(
-                                        GameNetworkManager.Instance.localPlayerController.transform.position + new Vector3(2f, 0f, 2f),
-                                        0,
-                                        (int)enemyType - 1
-                                    );
-                                }
-                            }
-                        }
-
-                        GUILayout.EndHorizontal();
-                    }
-
-                    GUILayout.EndScrollView();
-                    GUILayout.EndVertical();
-                    break;
-                case 6: //shop
+                case 3: //misc
                     bool noprice = GUILayout.Button("No shop item cost", tabst);
                     if (noprice)
                     {
@@ -645,7 +589,7 @@ namespace ClassLibrary4
                     {
                         foreach (GrabbableObject grabbable in FindObjectsOfType<GrabbableObject>())
                         {
-                            grabbable.SetScrapValue(9999);
+                            grabbable.SetScrapValue(int.MaxValue);
                         }
                     }
 
@@ -655,8 +599,8 @@ namespace ClassLibrary4
                         foreach (var item in StartOfRound.Instance.allItemsList.itemsList)
                         {
                             item.isScrap = true;
-                            item.minValue = 999999;
-                            item.maxValue = 999999;
+                            item.minValue = int.MaxValue;
+                            item.maxValue = int.MaxValue;
                         }
                     }
 
@@ -703,9 +647,10 @@ namespace ClassLibrary4
                         }
                     }
                     break;
-                case 7: //server
+                case 4: //server
                     scrolling = GUILayout.BeginScrollView(scrolling);
-
+                    Toggles.inst.t_tvspz = GUILayout.Toggle(Toggles.inst.t_tvspz, "TV spaz");
+                    Toggles.inst.t_spazlights = GUILayout.Toggle(Toggles.inst.t_spazlights, "Spaz lights");
                     Toggles.inst.spamhorn = GUILayout.Toggle(Toggles.inst.spamhorn, "Spam horn");
                     if (Toggles.inst.spamhorn)
                     {
@@ -714,13 +659,66 @@ namespace ClassLibrary4
                             horn.HoldCordDown();
                         }
                     }
+                    //no work :cry:
+                    /*Toggles.inst.t_rigspam = GUILayout.Toggle(Toggles.inst.t_rigspam, "Rig/player spam");
+                    if (Toggles.inst.t_rigspam)
+                    {
+                        foreach (NetworkObject obj in Resources.FindObjectsOfTypeAll<NetworkObject>())
+                        {
+                            if (obj.name.Contains("Player") && !obj.IsSpawned)
+                            {
+                                obj.Spawn();
+                            }
+                        }
+                    }*/
+                    if (GUILayout.Button("Spam all ads"))
+                    {
+                        if (HUDManager.Instance) return;
+                        for (int i = 0; i < 3; i++)
+                            HUDManager.Instance.CreateToolAdModelAndDisplayAdClientRpc(8, i);
+                    }
+                    if (GUILayout.Button("Start meteor shower", tabst))
+                    {
+                        foreach (MeteorShowers meteor in FindObjectsOfType<MeteorShowers>())
+                        {
+                            meteor.CreateMeteorServerRpc(meteor.GetComponent<Meteor>().landingTimer, meteor.GetComponent<Meteor>().landingPosition, meteor.GetComponent<Meteor>().skyDirection, meteor.GetComponent<Meteor>().scale);
+                        }
+                    }
+                    bool maybwork2 = GUILayout.Button("Break server <color=red>(HOST)</color>", tabst);
+                    if (maybwork2)
+                    {
+                        foreach (GameObject obj in Resources.FindObjectsOfTypeAll<GameObject>())
+                        {
+                            var netObj = obj.GetComponent<NetworkObject>();
+                            if (netObj == null)
+                            {
+                                netObj = obj.AddComponent<NetworkObject>();
+                            }
+
+                            if (!netObj.IsSpawned)
+                            {
+                                try
+                                {
+                                    netObj.Spawn();
+                                }
+                                catch (Exception e)
+                                {
+                                }
+                            }
+                        }
+                    }
+                    if (GUILayout.Button("Spawn meteor", tabst))
+                    {
+                        MeteorShowers meteor = FindObjectOfType<MeteorShowers>();
+                        GameObject obj = Instantiate(meteor.meteorPrefab.gameObject, localplayer.gameObject.transform.position, Quaternion.identity);
+                    }
                     bool tpallthings = GUILayout.Button("Teleport all items", tabst);
                     if (tpallthings)
                     {
                         foreach (GrabbableObject grabbable in FindObjectsOfType<GrabbableObject>())
                         {
-                            grabbable.transform.position = GameNetworkManager.Instance.localPlayerController.gameObject.transform.position + new Vector3(2f, 0f, 2f);
-                            grabbable.parentObject.gameObject.transform.position = GameNetworkManager.Instance.localPlayerController.gameObject.transform.position + new Vector3(2f, 0f, 2f);
+                            grabbable.transform.position = GameNetworkManager.Instance.localPlayerController.gameObject.transform.position;;
+                            grabbable.parentObject.gameObject.transform.position = GameNetworkManager.Instance.localPlayerController.gameObject.transform.position;;
                         }
                     }
 
@@ -838,12 +836,9 @@ namespace ClassLibrary4
                     bool equiopall = GUILayout.Button("Equip all", tabst);
                     if (equiopall)
                     {
-                        foreach (PlayerControllerB player in FindObjectsOfType<PlayerControllerB>())
+                        foreach (GrabbableObject obj in FindObjectsOfType<GrabbableObject>())
                         {
-                            foreach (GrabbableObject obj in FindObjectsOfType<GrabbableObject>())
-                            {
-                                obj.EquipItem();
-                            }
+                            localplayer.currentlyHeldObjectServer = obj;
                         }
                     }
 
@@ -874,6 +869,26 @@ namespace ClassLibrary4
                         foreach (TimeOfDay weather in FindObjectsOfType<TimeOfDay>())
                         {
                             weather.SetShipLeaveEarlyServerRpc();
+                        }
+                    }
+
+                    bool endgame = GUILayout.Button("End game <color=red>(HOST)</color>", tabst);
+                    if (endgame)
+                    {
+                        foreach (StartOfRound round in FindObjectsOfType<StartOfRound>())
+                        {
+                            round.inShipPhase = true;
+                            round.firingPlayersCutsceneRunning = false;
+                            round.ManuallyEjectPlayersServerRpc();
+                        }
+                    }
+
+                    bool endgame2 = GUILayout.Button("End game 2", tabst);
+                    if (endgame2)
+                    {
+                        foreach (StartOfRound hi in FindObjectsOfType<StartOfRound>())
+                        {
+                            hi.EndOfGameClientRpc(40, 50, StartOfRound.Instance.connectedPlayersAmount, StartOfRound.Instance.scrapCollectedLastRound);
                         }
                     }
 
@@ -915,10 +930,15 @@ namespace ClassLibrary4
                     bool spawnallenemies = GUILayout.Button("Spawn all enemies <color=red>(HOST)</color>", tabst);
                     if (spawnallenemies)
                     {
-                        foreach (RoundManager spawn in FindObjectsOfType<RoundManager>())
+                        /*foreach (RoundManager spawn in FindObjectsOfType<RoundManager>())
                         {
-                            for (int i = 0; i < 27; i++)
-                                spawn.SpawnEnemyOnServer(GameNetworkManager.Instance.localPlayerController.transform.position, 0, i);
+                            //for (int i = 0; i < 27; i++)
+                                //spawn.SpawnEnemyOnServer(GameNetworkManager.Instance.localPlayerController.transform.position, 0, i);
+                        }*/
+                        foreach (EnemyAI enemy in Resources.FindObjectsOfTypeAll<EnemyAI>())
+                        {
+                            GameObject obj = Instantiate(enemy.gameObject, GameNetworkManager.Instance.localPlayerController.transform.position + new Vector3(2f, 0f, 2f), Quaternion.identity);
+                            obj.GetComponent<NetworkObject>().Spawn();
                         }
                     }
 
@@ -970,84 +990,43 @@ namespace ClassLibrary4
 
                     GUILayout.EndScrollView();
                     break;
-                case 8: //logging
-                    bool getids = GUILayout.Button("Log all players", tabst);
-                    if (getids)
+                case 5: //settings
+                    Toggles.inst.t_time = GUILayout.Toggle(Toggles.inst.t_time, "Better time");
+                    GUILayout.Label("DEBUG:");
+                    bool maybwork22 = GUILayout.Button("Break lobby/break everyones game <color=red>(LEAVE AND REJOIN TO DO IT, working???)</color>", tabst);
+                    if (maybwork22)
                     {
-                        foreach (PlayerControllerB player in FindObjectsOfType<PlayerControllerB>())
+                        HUDManager.Instance.DisplayTip("PAxLM", "THIS IS DEBUG!!!! probably won't work.");
+                        foreach (GameObject obj in Resources.FindObjectsOfTypeAll<GameObject>())
                         {
-                            Debug.Log($"player objecto: {player.name} | id: {player.actualClientId} | owner: {player.OwnerClientId}" + " more info: " + player.IsOwner + " " + player.playerClientId);
-                        }
-                    }
-
-                    bool getenemies = GUILayout.Button("Log spawned enemies", tabst);
-                    if (getenemies)
-                    {
-                        foreach (EnemyAI enemy in FindObjectsOfType<EnemyAI>())
-                        {
-                            Debug.Log($"enemy: {enemy.enemyType.enemyName} | can die: {enemy.enemyType.canDie} | max amount: {enemy.enemyType.MaxCount}");
-                        }
-                    }
-
-                    bool getcams = GUILayout.Button("Log all cams", tabst);
-                    if (getcams)
-                    {
-                        foreach (Camera cam in FindObjectsOfType<Camera>())
-                        {
-                            Debug.Log($"cam: {cam.name}");
-                        }
-                    }
-
-                    bool getscrap = GUILayout.Button("Log all scrap", tabst);
-                    if (getscrap) 
-                    {
-                        foreach (var item in StartOfRound.Instance.allItemsList.itemsList)
-                        {
-                            if (item.isScrap)
+                            var netObj = obj.GetComponent<NetworkObject>();
+                            if (netObj == null)
                             {
-                                Debug.Log($"scrap item: {item.itemName} | min: {item.minValue} | max: {item.maxValue}");
+                                netObj = obj.AddComponent<NetworkObject>();
                             }
-                        }
-                    }
 
-                    bool getitems = GUILayout.Button("Log shop items", tabst);
-                    if (getitems)
-                    {
-                        foreach (var item in StartOfRound.Instance.allItemsList.itemsList)
-                        {
-                            if (!item.isScrap)
+                            if (!netObj.IsSpawned)
                             {
-                                Debug.Log($"item: {item.itemName} | value: {item.creditsWorth}");
-                            }
-                        }
-                    }
-
-                    bool log = GUILayout.Button("Log all unlockables", tabst);
-                    if (log)
-                    {
-                        foreach (StartOfRound startof in FindObjectsOfType<StartOfRound>())
-                        {
-                            foreach (var unlockable in startof.unlockablesList.unlockables)
-                            {
-                                Debug.Log($"unlockable: {unlockable.unlockableName} | type: {unlockable.unlockableType} | already unlocked: {unlockable.alreadyUnlocked} | unlocked by you: {unlockable.hasBeenUnlockedByPlayer}");
-                            }
-                        }
-                    }
-
-                    bool logslevels = GUILayout.Button("Log levels", tabst);
-                    if (logslevels)
-                    {
-                        foreach (HUDManager level in FindObjectsOfType<HUDManager>())
-                        {
-                            foreach (var levelbl in level.playerLevels)
-                            {
-                                Debug.Log($"level: {levelbl.levelName} | xp: {levelbl.XPMax} | min: {levelbl.XPMin}");
+                                try
+                                {
+                                    netObj.Spawn();
+                                }
+                                catch (Exception e)
+                                {
+                                }
                             }
                         }
                     }
                     break;
-                default:
-                    GUILayout.Label($"{tabs[selected]}", label);
+                case 6: //managers
+                    Toggles.inst.w_enemies = GUILayout.Toggle(Toggles.inst.w_enemies, "Enemy manager");
+                    Toggles.inst.w_items = GUILayout.Toggle(Toggles.inst.w_items, "Item manager");
+                    Toggles.inst.w_players = GUILayout.Toggle(Toggles.inst.w_players, "Player manager");
+                    Toggles.inst.w_explorer = GUILayout.Toggle(Toggles.inst.w_explorer, "Scene explorer");
+                    Toggles.inst.w_moons = GUILayout.Toggle(Toggles.inst.w_moons, "Moons manager");
+                    Toggles.inst.w_pexplorer = GUILayout.Toggle(Toggles.inst.w_pexplorer, "Prefab explorer");
+                    Toggles.inst.w_spawners = GUILayout.Toggle(Toggles.inst.w_spawners, "Enemy spawner");
+                    Toggles.inst.w_ispawner = GUILayout.Toggle(Toggles.inst.w_ispawner, "Item spawner");
                     break;
             }
 
@@ -1127,40 +1106,49 @@ namespace ClassLibrary4
             GUI.Label(new Rect(fX + 1f, fY + 1f, size.x, H), str, Style);
         }
 
-        public static void Draw(IEnumerable<GameObject> objects, PlayerControllerB localPlayer,
+        public static void Draw(
+            IEnumerable<GameObject> objects,
+            PlayerControllerB localPlayer,
             System.Func<GameObject, string> labelSelector,
             System.Func<GameObject, Color> colorSelector,
             bool displayDistance = true)
         {
             if (localPlayer == null || localPlayer.gameplayCamera == null) return;
+
             Camera cam = localPlayer.gameplayCamera;
+            Vector3 playerPos = localPlayer.transform.position;
 
             GUIStyle style = GUI.skin.label;
+            GUIContent guiContent = new GUIContent();
 
             foreach (var obj in objects)
             {
-                if (obj == null || !obj.activeSelf) continue;
+                if (obj == null || !obj.activeInHierarchy) continue;
 
-                Vector3 worldPos = obj.transform.position + Vector3.up * 2f;
-                Vector3 screenPos;
+                Transform objTransform = obj.transform;
 
-                if (!WorldToScreen(cam, worldPos, out screenPos) || screenPos.z <= 0f)
+                const float maxdist = 250f;
+                float distance = Vector3.Distance(playerPos, objTransform.position);
+                if (distance > maxdist) continue;
+
+                Vector3 worldPos = objTransform.position + Vector3.up * 2f;
+                Vector3 toObj = objTransform.position - cam.transform.position;
+                float dotProduct = Vector3.Dot(cam.transform.forward, toObj.normalized);
+                if (dotProduct <= 0f) continue;
+
+                if (!WorldToScreen(cam, worldPos, out Vector3 screenPos) || screenPos.z <= 0f)
                     continue;
-
-                float distance = Vector3.Distance(localPlayer.transform.position, obj.transform.position);
 
                 string label = labelSelector(obj);
                 if (string.IsNullOrEmpty(label)) continue;
+                if (char.IsLower(label[0]))
+                    label = char.ToUpperInvariant(label[0]) + label.Substring(1);
 
-                label = char.ToUpper(label[0]) + label.Substring(1);
                 if (displayDistance)
                     label += $" - {distance:F1}m -";
-                if (!caching.TryGetValue(label, out Vector2 size))
-                {
-                    size = style.CalcSize(new GUIContent(label));
-                    caching[label] = size;
-                }
 
+                guiContent.text = label;
+                Vector2 size = style.CalcSize(guiContent);
                 labelesp(style, screenPos.x, screenPos.y, size.x, size.y, label, colorSelector(obj), true, true);
             }
         }
