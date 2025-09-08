@@ -9,9 +9,14 @@ namespace ClassLibrary6.Helpers
     public class Notifications
     {
         //one script one void
-        public static void Noti(string whattosay)
+        public static void Noti(string title, string whattosay)
         {
-            HUDManager.Instance.DisplayTip("PAxLM", whattosay);
+            if (title != "") {
+                HUDManager.Instance.DisplayTip(title, whattosay);
+            }
+            else {
+                HUDManager.Instance.DisplayTip("PAxLM", whattosay);
+            }
         }
     }
 }
