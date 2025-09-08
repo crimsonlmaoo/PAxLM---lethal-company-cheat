@@ -191,7 +191,7 @@ namespace ClassLibrary4
 
                     if (toggleValue && !alreadynotid.Contains(toggleName))
                     {
-                        Notifications.Noti("Enabled/executed!");
+                        Notifications.Noti(title: "PAxLM", "Enabled/executed!");
                         alreadynotid.Add(toggleName);
                     }
                     else if (!toggleValue && alreadynotid.Contains(toggleName))
