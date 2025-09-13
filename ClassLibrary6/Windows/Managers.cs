@@ -1,4 +1,4 @@
-using ClassLibrary6.Helpers;
+using PAxLM.Helpers;
 using GameNetcodeStuff;
 using System;
 using System.Collections.Generic;
@@ -11,11 +11,11 @@ using System.Net.NetworkInformation;
 using DunGen.Tags;
 using System.Collections;
 using UnityEngine.Assertions.Must;
-using static ClassLibrary4.gui;
+using static PAxLM.gui;
 using Unity.Netcode;
 using System.Xml.Linq;
 
-namespace ClassLibrary6.Windows
+namespace PAxLM.Windows
 {
     public class Managers
     {
@@ -35,6 +35,7 @@ namespace ClassLibrary6.Windows
         static Vector2 scrollingexplorer = Vector2.zero;
         static Vector2 scrollingexplorer2 = Vector2.zero;
         static Vector2 scrollingprefabs = Vector2.zero;
+        static Vector3 scrollingenemi = Vector2.zero;
         static int selectedItemIndex = -1;
         static int selectedObjectIndex = -1;
         static int selectedPrefabIndex = -1;
@@ -44,12 +45,14 @@ namespace ClassLibrary6.Windows
         static GrabbableObject[] items = Array.Empty<GrabbableObject>();
         static PlayerControllerB[] players = Array.Empty<PlayerControllerB>();
         static EnemyAI[] enemies = Array.Empty<EnemyAI>();
+        static EnemyAI[] enemiess = Array.Empty<EnemyAI>();
         static Landmine[] landmines = Array.Empty<Landmine>();
         static Vector2 scrollinglandmines = Vector2.zero;
         static int selectedLandmineIndex = -1;
         static int selectedEnemyIndex = -1;
         static int selectedPlayerIndex = -1;
         static int selectedItemIndex2 = -1;
+        static int selectedSpawnIndex = -1;
         static Vector2 scrolling = Vector2.zero;
         static string hello = "dmg amount";
         static string healamt = "heal amount";
@@ -178,6 +181,13 @@ namespace ClassLibrary6.Windows
                         player.DestroyItemInSlotServerRpc(3);
                     }
 
+                    if (GUILayout.Button("Tp inside entrance"))
+                    {
+                        //EntranceTeleport entrance = GameObject.FindObjectOfType<EntranceTeleport>();
+                        player.TeleportPlayer(RoundManager.FindMainEntranceScript().entrancePoint.position + new Vector3(2f, 0f, 2f));
+                        player.isInsideFactory = true;
+                    }
+
                     if (GUILayout.Button("Tp to", tabst))
                     {
                         var self = Stuff.inst.GetSelf();
@@ -211,7 +221,7 @@ namespace ClassLibrary6.Windows
             }
             else
             {
-                GUILayout.Label("select someone", label);
+                GUILayout.Label("join a game!", label);
             }
 
             GUILayout.EndVertical();
@@ -264,7 +274,7 @@ namespace ClassLibrary6.Windows
             }
             else
             {
-                GUILayout.Label("select an enemy", label);
+                GUILayout.Label("join a game!", label);
             }
 
             GUILayout.EndVertical();
@@ -335,7 +345,7 @@ namespace ClassLibrary6.Windows
             }
             else
             {
-                GUILayout.Label("select an enemy", label);
+                GUILayout.Label("join a game!", label);
             }
 
             GUILayout.EndVertical();
@@ -423,7 +433,7 @@ namespace ClassLibrary6.Windows
             }
             else
             {
-                GUILayout.Label("select an item", label);
+                GUILayout.Label("join a game!", label);
             }
 
             GUILayout.EndVertical();
@@ -484,48 +494,61 @@ namespace ClassLibrary6.Windows
 
         public static void Spawners(int windowid)
         {
-            if (itemsList == null)
+            GUILayout.Label("<b>Enemy spawner</b>", GUI.skin.label);
+            GUILayout.BeginHorizontal();
+
+            try
             {
-                itemsList = new List<Item>(Resources.FindObjectsOfTypeAll<Item>());
+                scrollingenemi = GUILayout.BeginScrollView(scrollingenemi, GUILayout.Width(300));
+                enemiess = Resources.FindObjectsOfTypeAll<EnemyAI>();
+
+                for (int i = 0; i < enemiess.Length; i++)
+                {
+                    var player = enemiess[i];
+                    if (player == null) continue;
+
+                    if (GUILayout.Button($"enemy: {player.name}", tabst))
+                    {
+                        selectedSpawnIndex = i;
+                    }
+                }
+            }
+            finally
+            {
+                GUILayout.EndScrollView();
             }
 
             GUILayout.BeginVertical();
-            GUILayout.Label("<b>Enemy spawner</b>", GUI.skin.label);
 
-            scrolling = GUILayout.BeginScrollView(scrolling);
-
-            foreach (Enemies enemyType in Enum.GetValues(typeof(Enemies)))
+            if (selectedSpawnIndex >= 0 && selectedSpawnIndex < enemiess.Length)
             {
-                if (enemyType == Enemies.Unknown) continue;
-
-                GUILayout.BeginHorizontal();
-
-                if (GUILayout.Button(enemyType.ToString(), tabst, GUILayout.Width(200f)))
+                var player = enemiess[selectedSpawnIndex];
+                if (player != null)
                 {
-                    selectedEnemyIndex = (int)enemyType;
-                }
+                    GUILayout.Label($"selected: {player.name}", label);
 
-                if (selectedEnemyIndex == (int)enemyType)
-                {
-                    Notifications.Noti("Spawned!");
-                    if (GUILayout.Button("Spawn", tabst, GUILayout.Width(80f)))
+                    if (GUILayout.Button("Spawn <color=red>(HOST)</color>"))
                     {
-                        var roundman = RoundManager.Instance;
-                        if (roundman != null)
+                        GameObject obj = GameObject.Instantiate(player.gameObject, GameNetworkManager.Instance.localPlayerController.gameObject.transform.position, Quaternion.identity);
+                        NetworkObject netobj = obj.GetComponent<NetworkObject>();
+                        if (netobj != null)
                         {
-                            roundman.SpawnEnemyOnServer(
-                                GameNetworkManager.Instance.localPlayerController.transform.position,
-                                0,
-                                (int)enemyType - 1
-                            );
+                            netobj.Spawn();
                         }
                     }
                 }
-                GUILayout.EndHorizontal();
+                else
+                {
+                    GUILayout.Label("whatever you selected is null! something went wrong.", label);
+                }
+            }
+            else
+            {
+                GUILayout.Label("join a game!", label);
             }
 
-            GUILayout.EndScrollView();
             GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
 
             GUI.DragWindow(new Rect(0, 0, 10000, 10000));
         }
@@ -533,6 +556,10 @@ namespace ClassLibrary6.Windows
         public static void Moons(int windowid)
         {
             var terminals = GameObject.FindObjectOfType<Terminal>();
+            if (StartOfRound.Instance == null)
+            {
+                GUILayout.Label("join a game!");
+            }
             if (StartOfRound.Instance != null)
                 GUILayout.Label($"current moon stuff:\nselected moon: {StartOfRound.Instance.currentLevel.name}\nmoon's weather: {StartOfRound.Instance.currentLevel.currentWeather}\nrisk: {StartOfRound.Instance.currentLevel.riskLevel}");
                 for (int i = 0; i < StartOfRound.Instance.levels.Length; i++)
@@ -594,7 +621,7 @@ namespace ClassLibrary6.Windows
             }
             else
             {
-                GUILayout.Label("select something", label);
+                GUILayout.Label("join a game!", label);
             }
 
             GUILayout.EndVertical();
@@ -651,7 +678,7 @@ namespace ClassLibrary6.Windows
             }
             else
             {
-                GUILayout.Label("select something", label);
+                GUILayout.Label("join a game!", label);
             }
 
             GUILayout.EndVertical();
