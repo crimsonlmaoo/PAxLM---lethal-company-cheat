@@ -1,6 +1,5 @@
-using ClassLibrary6.Helpers;
-using ClassLibrary6.Toggles;
-using ClassLibrary6.Windows;
+using PAxLM.Helpers;
+using PAxLM.Windows;
 using DigitalRuby.ThunderAndLightning;
 using GameNetcodeStuff;
 using HarmonyLib;
@@ -19,8 +18,9 @@ using UnityEngine;
 using UnityEngine.Device;
 using UnityEngine.InputSystem;
 using static IngamePlayerSettings;
+using PAxLM.Toggles;
 
-namespace ClassLibrary4
+namespace PAxLM
 {
     public class gui : MonoBehaviour
     {
@@ -50,40 +50,6 @@ namespace ClassLibrary4
         Texture2D tab2;
         Texture2D tab3;
         Texture2D pixel;
-
-        //enums
-        //thx lethal menu/icyrelic for the enemies struct!
-        public enum Enemies
-        {
-            Unknown,
-            Centipede,
-            SandSpider,
-            HoarderBug,
-            Flowerman,
-            Crawler,
-            Blob,
-            DressGirl,
-            Puffer,
-            Nutcracker,
-            RedLocustBees,
-            Doublewing,
-            DocileLocustBees,
-            MouthDog,
-            ForestGiant,
-            SandWorm,
-            BaboonHawk,
-            SpringMan,
-            Jester,
-            LassoMan,
-            MaskedPlayerEnemy,
-            Butler,
-            ButlerBees,
-            RadMech,
-            FlowerSnake,
-            BushWolf,
-            ClaySurgeon,
-            CaveDweller
-        }
 
         //for gui
         bool show = false;
@@ -134,6 +100,7 @@ namespace ClassLibrary4
         List<GrabbableObject> grabbabless = null;
         List<PlayerControllerB> playerss = null;
         List<EnemyAI> enemiess = null;
+        List<DoorLock> doors = null;
 
         //harmony
         Harmony harm = new Harmony("com.ClassLibrary4.patching");
@@ -150,6 +117,9 @@ namespace ClassLibrary4
         float cooldown = 0.3f;
         float lasttoggle = -1f;
         float speedd = 1f;
+        int value = 1;
+        float updateint = 1f;
+        float lastupdate;
 
         //for force emotes but it didn't work
         UnityEngine.InputSystem.InputAction.CallbackContext context;
@@ -165,6 +135,21 @@ namespace ClassLibrary4
         public int fpsbr { get; private set; }
         float refresh = 1f;
 
+        private string GetTime()
+        {
+            string newLine;
+            int num = (int)(TimeOfDay.Instance.normalizedTimeOfDay * (60f * TimeOfDay.Instance.numberOfHours)) + 360;
+            int num2 = (int)Mathf.Floor(num / 60);
+
+            if (num2 > 12)
+            {
+                num2 %= 12;
+            }
+
+            int num3 = num % 60;
+            string text = $"{num2:00}:{num3:00}".TrimStart('0');
+            return text;
+        }
         private IEnumerator fps()
         {
             waitfor = new WaitForSecondsRealtime(refresh);
@@ -182,16 +167,16 @@ namespace ClassLibrary4
 
         void Update()
         {
-            foreach (var field in typeof(Toggles).GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+            foreach (var field in typeof(Toggles.Toggles).GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
             {
                 if (field.FieldType == typeof(bool))
                 {
-                    bool toggleValue = (bool)field.GetValue(Toggles.inst);
+                    bool toggleValue = (bool)field.GetValue(Toggles.Toggles.inst);
                     string toggleName = field.Name;
 
                     if (toggleValue && !alreadynotid.Contains(toggleName))
                     {
-                        Notifications.Noti(title: "PAxLM", "Enabled/executed!");
+                        Notifications.Noti("Enabled/executed!");
                         alreadynotid.Add(toggleName);
                     }
                     else if (!toggleValue && alreadynotid.Contains(toggleName))
@@ -210,7 +195,7 @@ namespace ClassLibrary4
                 }
             }
 
-            if (Toggles.inst.t_hearall)
+            if (Toggles.Toggles.inst.t_hearall)
             {
                 foreach (PlayerControllerB players in FindObjectsOfType<PlayerControllerB>())
                 {
@@ -219,7 +204,7 @@ namespace ClassLibrary4
                 }
             }
 
-            if (Toggles.inst.t_spazlights)
+            if (Toggles.Toggles.inst.t_spazlights)
             {
                 ShipLights[] lights = FindObjectsOfType<ShipLights>();
                 foreach (ShipLights light in lights)
@@ -230,7 +215,7 @@ namespace ClassLibrary4
                 }
             }
 
-            if (Toggles.inst.t_tvspz)
+            if (Toggles.Toggles.inst.t_tvspz)
             {
                 foreach (TVScript tVScript in FindObjectsOfType<TVScript>())
                 {
@@ -239,7 +224,7 @@ namespace ClassLibrary4
                 }
             }
 
-            if (Toggles.inst.t_fly)
+            if (Toggles.Toggles.inst.t_fly)
             {
                 if (Keyboard.current.wKey.isPressed)
                 {
@@ -247,62 +232,62 @@ namespace ClassLibrary4
                 }
             }
 
-            if (Toggles.inst.t_fastclimb)
+            if (Toggles.Toggles.inst.t_fastclimb)
             {
                 localplayer.climbSpeed = 99f;
             }
 
-            if (Toggles.inst.t_infstam)
+            if (Toggles.Toggles.inst.t_infstam)
             {
                 localplayer.sprintMeter = 1f;
                 if (localplayer.sprintMeterUI != null)
                     localplayer.sprintMeterUI.fillAmount = 1f;
             }
 
-            if (Toggles.inst.t_infhealth)
+            if (Toggles.Toggles.inst.t_infhealth)
             {
                 localplayer.health = int.MaxValue;
             }
 
-            if (Toggles.inst.t_infcharge && localplayer.currentlyHeldObjectServer?.insertedBattery != null)
+            if (Toggles.Toggles.inst.t_infcharge && localplayer.currentlyHeldObjectServer?.insertedBattery != null)
             {
                 localplayer.currentlyHeldObjectServer.insertedBattery.charge = 1;
                 localplayer.currentlyHeldObjectServer.insertedBattery.empty = false;
             }
 
-            if (Toggles.inst.t_chargeany)
+            if (Toggles.Toggles.inst.t_chargeany)
             {
                 localplayer.currentlyHeldObject.itemProperties.requiresBattery = true;
             }
 
-            if (Toggles.inst.t_fastheal)
+            if (Toggles.Toggles.inst.t_fastheal)
             {
                 localplayer.healthRegenerateTimer = 0.1f;
             }
 
-            if (Toggles.inst.t_infreach)
+            if (Toggles.Toggles.inst.t_infreach)
             {
                 localplayer.grabDistance = int.MaxValue;
             }
 
-            if (Toggles.inst.t_noweight)
+            if (Toggles.Toggles.inst.t_noweight)
             {
                 localplayer.currentlyHeldObjectServer.itemProperties.weight = 0f;
                 localplayer.carryWeight = 0f;
             }
 
-            if (Toggles.inst.t_strong)
+            if (Toggles.Toggles.inst.t_strong)
             {
                 localplayer.currentlyHeldObjectServer.itemProperties.twoHanded = false;
                 localplayer.currentlyHeldObjectServer.itemProperties.twoHandedAnimation = false;
             }
 
-            if (Toggles.inst.t_infammo)
+            if (Toggles.Toggles.inst.t_infammo)
             {
                 localplayer.currentlyHeldObjectServer.GetComponent<ShotgunItem>().shellsLoaded = int.MaxValue;
             }
 
-            if (Toggles.inst.t_nodark)
+            if (Toggles.Toggles.inst.t_nodark)
             {
                 localplayer.nightVision.enabled = true;
                 localplayer.nightVision.intensity = 30000f;
@@ -325,21 +310,43 @@ namespace ClassLibrary4
 
                 GUIStyle thhumb = new GUIStyle(GUI.skin.horizontalSliderThumb);
                 thhumb.normal.background = Tex(10, 10, Color.red);
+                thhumb.onActive.background = Tex(10, 10, Color.red);
                 thhumb.fixedWidth = 20;
 
                 GUI.skin.horizontalSlider = slide;
                 GUI.skin.horizontalSliderThumb = thhumb;
             }
 
-            if (Toggles.inst.t_speed)
+            if (Toggles.Toggles.inst.t_speed)
             {
                  localplayer.movementSpeed = speedd;
             }
 
-            if (Toggles.inst.t_lesp && localplayer != null && localplayer.gameplayCamera != null)
+            if (Time.time - lastupdate >= updateint)
             {
-                if (Time.frameCount % 10 == 0)
-                { landmines = new List<Landmine>(FindObjectsOfType<Landmine>()); }
+                lastupdate = Time.time;
+
+                if (Toggles.Toggles.inst.t_lesp)
+                    landmines = new List<Landmine>(FindObjectsOfType<Landmine>());
+
+                if (Toggles.Toggles.inst.t_ttesp)
+                    turrets = new List<Turret>(FindObjectsOfType<Turret>());
+
+                if (Toggles.Toggles.inst.t_tesp)
+                    grabbabless = new List<GrabbableObject>(FindObjectsOfType<GrabbableObject>());
+
+                if (Toggles.Toggles.inst.t_pesp)
+                    playerss = new List<PlayerControllerB>(FindObjectsOfType<PlayerControllerB>());
+
+                if (Toggles.Toggles.inst.t_esp)
+                    enemiess = new List<EnemyAI>(FindObjectsOfType<EnemyAI>());
+
+                if (Toggles.Toggles.inst.t_desp)
+                    doors = new List<DoorLock>(FindObjectsOfType<DoorLock>());
+            }
+
+            if (Toggles.Toggles.inst.t_lesp)
+            {
                 Draw(
                     landmines.Select(e => e.gameObject),
                     localplayer,
@@ -348,10 +355,9 @@ namespace ClassLibrary4
                     true
                 );
             }
-            if (Toggles.inst.t_ttesp && localplayer != null && localplayer.gameplayCamera != null)
+
+            if (Toggles.Toggles.inst.t_ttesp)
             {
-                if (Time.frameCount % 10 == 0)
-                { turrets = new List<Turret>(FindObjectsOfType<Turret>()); }
                 Draw(
                     turrets.Select(e => e.gameObject),
                     localplayer,
@@ -360,12 +366,9 @@ namespace ClassLibrary4
                     true
                 );
             }
-            if (Toggles.inst.t_tesp && localplayer != null && localplayer.gameplayCamera != null)
+
+            if (Toggles.Toggles.inst.t_tesp)
             {
-                if (Time.frameCount % 10 == 0)
-                {
-                    grabbabless = new List<GrabbableObject>(FindObjectsOfType<GrabbableObject>());
-                }
                 Draw(
                     grabbabless.Select(g => g.gameObject),
                     localplayer,
@@ -378,11 +381,9 @@ namespace ClassLibrary4
                     true
                 );
             }
-            if (Toggles.inst.t_pesp && localplayer != null && localplayer.gameplayCamera != null)
+
+            if (Toggles.Toggles.inst.t_pesp)
             {
-                if (Time.frameCount % 10 == 0) { 
-                    playerss = new List<PlayerControllerB>(FindObjectsOfType<PlayerControllerB>());
-                    }
                 Draw(
                     playerss.Select(e => e.gameObject),
                     localplayer,
@@ -391,12 +392,9 @@ namespace ClassLibrary4
                     true
                 );
             }
-            if (Toggles.inst.t_esp && localplayer != null && localplayer.gameplayCamera != null)
+
+            if (Toggles.Toggles.inst.t_esp)
             {
-                if (Time.frameCount % 10 == 0)
-                {
-                    enemiess = new List<EnemyAI>(FindObjectsOfType<EnemyAI>());
-                }
                 Draw(
                     enemiess.Select(e => e.gameObject),
                     localplayer,
@@ -405,75 +403,87 @@ namespace ClassLibrary4
                     true
                 );
             }
+
+            if (Toggles.Toggles.inst.t_desp)
+            {
+                Draw(
+                    doors.Select(e => e.gameObject),
+                    localplayer,
+                    obj => "Door",
+                    obj => Color.blue,
+                    true
+                );
+            }
             string[] mods = new string[]
             {
-                    Toggles.inst.spamhorn ? "Spam horn" : null,
-                    Toggles.inst.t_fly ? "Velocity fly" : null,
-                    Toggles.inst.t_nodark ? "No dark/nightvision" : null,
-                    Toggles.inst.t_infammo ? "Inf shotgun ammo" : null,
-                    Toggles.inst.t_infhealth ? "Inf health" : null,
-                    Toggles.inst.t_infstam ? "Inf stamina" : null,
-                    Toggles.inst.t_infcharge ? "Inf battery charge" : null,
-                    Toggles.inst.t_chargeany ? "Charge anything" : null,
-                    Toggles.inst.t_noweight ? "No item weight" : null,
-                    Toggles.inst.t_strong ? "Strong" : null,
-                    Toggles.inst.t_fastheal ? "Fast heal" : null,
-                    Toggles.inst.t_infreach ? "Inf reach" : null,
-                    Toggles.inst.t_esp ? "Enemy ESP" : null,
-                    Toggles.inst.t_pesp ? "Player ESP" : null,
-                    Toggles.inst.t_tesp ? "Item ESP" : null,
-                    Toggles.inst.t_ttesp ? "Turret ESP" : null,
-                    Toggles.inst.t_lesp ? "Landmine ESP" : null,
-                    Toggles.inst.t_time ? "Better timer" : null,
+                    Toggles.Toggles.inst.spamhorn ? "Spam horn" : null,
+                    Toggles.Toggles.inst.t_fly ? "Velocity fly" : null,
+                    Toggles.Toggles.inst.t_nodark ? "No dark/nightvision" : null,
+                    Toggles.Toggles.inst.t_infammo ? "Inf shotgun ammo" : null,
+                    Toggles.Toggles.inst.t_infhealth ? "Inf health" : null,
+                    Toggles.Toggles.inst.t_infstam ? "Inf stamina" : null,
+                    Toggles.Toggles.inst.t_infcharge ? "Inf battery charge" : null,
+                    Toggles.Toggles.inst.t_chargeany ? "Charge anything" : null,
+                    Toggles.Toggles.inst.t_noweight ? "No item weight" : null,
+                    Toggles.Toggles.inst.t_strong ? "Strong" : null,
+                    Toggles.Toggles.inst.t_fastheal ? "Fast heal" : null,
+                    Toggles.Toggles.inst.t_infreach ? "Inf reach" : null,
+                    Toggles.Toggles.inst.t_esp ? "Enemy ESP" : null,
+                    Toggles.Toggles.inst.t_pesp ? "Player ESP" : null,
+                    Toggles.Toggles.inst.t_tesp ? "Item ESP" : null,
+                    Toggles.Toggles.inst.t_ttesp ? "Turret ESP" : null,
+                    Toggles.Toggles.inst.t_desp ? "Door ESP" : null,
+                    Toggles.Toggles.inst.t_lesp ? "Landmine ESP" : null,
+                    Toggles.Toggles.inst.t_time ? "Better timer" : null,
             };
 
             string enableds = string.Join("\n", mods.Where(name => name != null));
-            if (!Toggles.inst.t_time)
+            if (!Toggles.Toggles.inst.t_time)
             {
-                GUI.Label(new Rect(0, 10, UnityEngine.Screen.width, 200), $"PAxLM - created by crimsonh - version 1.0.2\n - {fpsbr} fps\n\n{enableds}", header);
+                GUI.Label(new Rect(0, 10, UnityEngine.Screen.width, 200), $"PAxLM - created by crimsonh - version 1.0.3\n - {fpsbr} fps\n\n{enableds}", header);
             }
             else
             {
                 //currentDayTime
-                GUI.Label(new Rect(0, 10, UnityEngine.Screen.width, 200), $"PAxLM - created by crimsonh - version 1.0.2\n{TimeOfDay.Instance.currentDayTime}\n - {fpsbr} fps\n\n{enableds}", header);
+                GUI.Label(new Rect(0, 10, UnityEngine.Screen.width, 200), $"PAxLM - created by crimsonh - version 1.0.3\n{GetTime()}\n - {fpsbr} fps\n\n{enableds}", header);
             }
 
             if (!show)
                 return;
-            if (Toggles.inst.w_spawners)
+            if (Toggles.Toggles.inst.w_spawners)
             {
                 recttington1 = GUI.Window(1, recttington1, Managers.Spawners, "Enemy spawner", window);
             }
-            if (Toggles.inst.w_explorer)
+            if (Toggles.Toggles.inst.w_explorer)
             {
                 recttington2 = GUI.Window(2, recttington2, Managers.Explorer, "Scene explorer", window);
             }
-            if (Toggles.inst.w_pexplorer)
+            if (Toggles.Toggles.inst.w_pexplorer)
             {
                 recttington3 = GUI.Window(3, recttington3, Managers.PrefabExplorer, "Prefab explorer", window);
             }
-            if (Toggles.inst.w_enemies)
+            if (Toggles.Toggles.inst.w_enemies)
             {
                 recttington4 = GUI.Window(4, recttington4, Managers.EnemiesWindow, "Enemies", window);
             }
-            if (Toggles.inst.w_items)
+            if (Toggles.Toggles.inst.w_items)
             {
                 recttington5 = GUI.Window(5, recttington5, Managers.Items, "Items", window);
             }
-            if (Toggles.inst.w_players)
+            if (Toggles.Toggles.inst.w_players)
             {
                 recttington6 = GUI.Window(6, recttington6, Managers.Players, "Players", window);
             }
-            if (Toggles.inst.w_moons)
+            if (Toggles.Toggles.inst.w_moons)
             {
                 recttington7 = GUI.Window(7, recttington7, Managers.Moons, "Moons", window);
             }
-            if  (Toggles.inst.w_ispawner)
+            if  (Toggles.Toggles.inst.w_ispawner)
             {
                 recttington8 = GUI.Window(8, recttington8, Managers.ItemSpawner, "Item spawner", window);
             }
 
-            if (Toggles.inst.w_landmine)
+            if (Toggles.Toggles.inst.w_landmine)
             {
                 recttington9 = GUI.Window(9, recttington9, Managers.Landmine, "Landmines", window);
             }
@@ -568,31 +578,33 @@ namespace ClassLibrary4
 
                     GUILayout.Space(20);
                     GUILayout.Label("Changelog", header);
-                    GUILayout.Label("- second release!\n- a LOT was added\n- no idea what works and what doesn't, but some might be host just yadada find out what works yourself.\nif any bugs or such found just reply on the thread", label);
+                    GUILayout.Label("- v1.0.3!\n- again, if things don't work PLEASE send them over to the thread and reply with the things!\n- if able to, please take a look at the source and give me some feedback on what to do better!", label);
                     break;
                 case 1: //self
                     speedd = GUILayout.HorizontalSlider(speedd, 1f, 20f);
-                    Toggles.inst.t_speed = GUILayout.Toggle(Toggles.inst.t_speed, $"Change speed ({speedd})");
-                    Toggles.inst.t_fastclimb = GUILayout.Toggle(Toggles.inst.t_fastclimb, "Fast climb");
-                    Toggles.inst.t_fly = GUILayout.Toggle(Toggles.inst.t_fly, "Velocity fly");
-                    Toggles.inst.t_nodark = GUILayout.Toggle(Toggles.inst.t_nodark, "No dark/nightvision");
-                    Toggles.inst.t_infammo = GUILayout.Toggle(Toggles.inst.t_infammo, "Inf shotgun ammo");
-                    Toggles.inst.t_infhealth = GUILayout.Toggle(Toggles.inst.t_infhealth, "Inf health");
-                    Toggles.inst.t_infstam = GUILayout.Toggle(Toggles.inst.t_infstam, "Inf stamina");
-                    Toggles.inst.t_infcharge = GUILayout.Toggle(Toggles.inst.t_infcharge, "Inf battery charge");
-                    Toggles.inst.t_chargeany = GUILayout.Toggle(Toggles.inst.t_chargeany, "Charge anything");
-                    Toggles.inst.t_noweight = GUILayout.Toggle(Toggles.inst.t_noweight, "No item weight");
-                    Toggles.inst.t_strong = GUILayout.Toggle(Toggles.inst.t_strong, "Strong");
-                    Toggles.inst.t_fastheal = GUILayout.Toggle(Toggles.inst.t_fastheal, "Fast heal");
-                    Toggles.inst.t_infreach = GUILayout.Toggle(Toggles.inst.t_infreach, "Inf reach");
-                    Toggles.inst.t_hearall = GUILayout.Toggle(Toggles.inst.t_hearall, "Hear all");
+                    GUILayout.Label("speed: " + speedd);
+                    Toggles.Toggles.inst.t_speed = GUILayout.Toggle(Toggles.Toggles.inst.t_speed, $"Change speed");
+                    Toggles.Toggles.inst.t_fastclimb = GUILayout.Toggle(Toggles.Toggles.inst.t_fastclimb, "Fast climb");
+                    //Toggles.Toggles.inst.t_fly = GUILayout.Toggle(Toggles.Toggles.inst.t_fly, "Velocity fly"); not gonna fix this
+                    Toggles.Toggles.inst.t_nodark = GUILayout.Toggle(Toggles.Toggles.inst.t_nodark, "No dark/nightvision");
+                    Toggles.Toggles.inst.t_infammo = GUILayout.Toggle(Toggles.Toggles.inst.t_infammo, "Inf shotgun ammo");
+                    Toggles.Toggles.inst.t_infhealth = GUILayout.Toggle(Toggles.Toggles.inst.t_infhealth, "Inf health");
+                    Toggles.Toggles.inst.t_infstam = GUILayout.Toggle(Toggles.Toggles.inst.t_infstam, "Inf stamina");
+                    Toggles.Toggles.inst.t_infcharge = GUILayout.Toggle(Toggles.Toggles.inst.t_infcharge, "Inf battery charge");
+                    Toggles.Toggles.inst.t_chargeany = GUILayout.Toggle(Toggles.Toggles.inst.t_chargeany, "Charge anything");
+                    //Toggles.Toggles.inst.t_noweight = GUILayout.Toggle(Toggles.Toggles.inst.t_noweight, "No item weight"); breaks YOUR weight for some reason
+                    //Toggles.Toggles.inst.t_strong = GUILayout.Toggle(Toggles.Toggles.inst.t_strong, "Strong"); why no work :(
+                    Toggles.Toggles.inst.t_fastheal = GUILayout.Toggle(Toggles.Toggles.inst.t_fastheal, "Fast heal");
+                    Toggles.Toggles.inst.t_infreach = GUILayout.Toggle(Toggles.Toggles.inst.t_infreach, "Inf reach");
+                    Toggles.Toggles.inst.t_hearall = GUILayout.Toggle(Toggles.Toggles.inst.t_hearall, "Hear all");
                     break;
                 case 2: //visuals
-                    Toggles.inst.t_esp = GUILayout.Toggle(Toggles.inst.t_esp, "Enemy ESP");
-                    Toggles.inst.t_pesp = GUILayout.Toggle(Toggles.inst.t_pesp, "Player ESP");
-                    Toggles.inst.t_tesp = GUILayout.Toggle(Toggles.inst.t_tesp, "Item ESP");
-                    Toggles.inst.t_ttesp = GUILayout.Toggle(Toggles.inst.t_ttesp, "Turret ESP");
-                    Toggles.inst.t_lesp = GUILayout.Toggle(Toggles.inst.t_lesp, "Landmine ESP");
+                    Toggles.Toggles.inst.t_esp = GUILayout.Toggle(Toggles.Toggles.inst.t_esp, "Enemy ESP");
+                    Toggles.Toggles.inst.t_pesp = GUILayout.Toggle(Toggles.Toggles.inst.t_pesp, "Player ESP");
+                    Toggles.Toggles.inst.t_tesp = GUILayout.Toggle(Toggles.Toggles.inst.t_tesp, "Item ESP");
+                    Toggles.Toggles.inst.t_ttesp = GUILayout.Toggle(Toggles.Toggles.inst.t_ttesp, "Turret ESP");
+                    Toggles.Toggles.inst.t_lesp = GUILayout.Toggle(Toggles.Toggles.inst.t_lesp, "Landmine ESP");
+                    Toggles.Toggles.inst.t_desp = GUILayout.Toggle(Toggles.Toggles.inst.t_desp, "Door ESP");
                     break;
                 case 3: //misc
                     bool noprice = GUILayout.Button("No shop item cost", tabst);
@@ -604,27 +616,19 @@ namespace ClassLibrary4
                         }
                     }
 
-                    bool noshotdelay = GUILayout.Button("Set scrap value", tabst);
+                    value = (int)GUILayout.HorizontalSlider((float)value, 1f, 99999f);
+                    GUILayout.Label("value: " + value);
+
+                    bool noshotdelay = GUILayout.Button("Set every grabbables value", tabst);
                     if (noshotdelay)
                     {
                         foreach (GrabbableObject grabbable in FindObjectsOfType<GrabbableObject>())
                         {
-                            grabbable.SetScrapValue(int.MaxValue);
+                            grabbable.SetScrapValue(value);
                         }
                     }
 
-                    bool noshotdelay2 = GUILayout.Button("All items scrap", tabst);
-                    if (noshotdelay2)
-                    {
-                        foreach (var item in StartOfRound.Instance.allItemsList.itemsList)
-                        {
-                            item.isScrap = true;
-                            item.minValue = int.MaxValue;
-                            item.maxValue = int.MaxValue;
-                        }
-                    }
-
-                    bool buyall = GUILayout.Button("Buy all <color=red>(HOST)</color>", tabst);
+                    bool buyall = GUILayout.Button("Buy all shop items <color=red>(HOST)</color>", tabst);
                     if (buyall)
                     {
                         BuyItemsServerRpc(new int[]
@@ -645,7 +649,7 @@ namespace ClassLibrary4
                         }
                     }
 
-                    bool makesellguyattack = GUILayout.Button("Make sell guy attack", tabst);
+                    bool makesellguyattack = GUILayout.Button("Force sell guy attack", tabst);
                     if (makesellguyattack)
                     {
                         foreach (DepositItemsDesk shop in FindObjectsOfType<DepositItemsDesk>())
@@ -653,44 +657,19 @@ namespace ClassLibrary4
                             shop.AttackPlayersServerRpc();
                         }
                     }
-
-                    bool sellall = GUILayout.Button("Sell all", tabst);
-                    if (sellall)
-                    {
-                        foreach (DepositItemsDesk shop in FindObjectsOfType<DepositItemsDesk>())
-                        {
-                            foreach (NetworkObject netobj in FindObjectsOfType<NetworkObject>())
-                            {
-                                shop.itemsOnCounterNetworkObjects.Add(netobj);
-                            }
-                            shop.SellItemsOnServer();
-                        }
-                    }
                     break;
                 case 4: //server
                     scrolling = GUILayout.BeginScrollView(scrolling);
-                    Toggles.inst.t_tvspz = GUILayout.Toggle(Toggles.inst.t_tvspz, "TV spaz");
-                    Toggles.inst.t_spazlights = GUILayout.Toggle(Toggles.inst.t_spazlights, "Spaz lights");
-                    Toggles.inst.spamhorn = GUILayout.Toggle(Toggles.inst.spamhorn, "Spam horn");
-                    if (Toggles.inst.spamhorn)
+                    Toggles.Toggles.inst.t_tvspz = GUILayout.Toggle(Toggles.Toggles.inst.t_tvspz, "TV spaz");
+                    //Toggles.Toggles.inst.t_spazlights = GUILayout.Toggle(Toggles.Toggles.inst.t_spazlights, "Spaz lights"); CS
+                    Toggles.Toggles.inst.spamhorn = GUILayout.Toggle(Toggles.Toggles.inst.spamhorn, "Spam horn");
+                    if (Toggles.Toggles.inst.spamhorn)
                     {
                         foreach (ShipAlarmCord horn in FindObjectsOfType<ShipAlarmCord>())
                         {
                             horn.HoldCordDown();
                         }
                     }
-                    //no work :cry:
-                    /*Toggles.inst.t_rigspam = GUILayout.Toggle(Toggles.inst.t_rigspam, "Rig/player spam");
-                    if (Toggles.inst.t_rigspam)
-                    {
-                        foreach (NetworkObject obj in Resources.FindObjectsOfTypeAll<NetworkObject>())
-                        {
-                            if (obj.name.Contains("Player") && !obj.IsSpawned)
-                            {
-                                obj.Spawn();
-                            }
-                        }
-                    }*/
 
                     bool test2 = GUILayout.Button("Break everyones game <color=red>(HOST)</color>", tabst);
                     if (test2)
@@ -804,7 +783,7 @@ namespace ClassLibrary4
                     }
 
                     messagetosay = GUILayout.TextField(messagetosay);
-                    bool makeallmessage = GUILayout.Button("Make all message", tabst);
+                    bool makeallmessage = GUILayout.Button("Make everyone message", tabst);
                     if (makeallmessage)
                     {
                         foreach (HUDManager hud in FindObjectsOfType<HUDManager>())
@@ -817,7 +796,6 @@ namespace ClassLibrary4
                     }
 
                     signalmessage = GUILayout.TextField(signalmessage);
-
                     bool signaltranslator = GUILayout.Button("Send signal", tabst);
                     if (signaltranslator)
                     {
@@ -872,7 +850,7 @@ namespace ClassLibrary4
                         }
                     }
 
-                    bool storeall = GUILayout.Button("Store all", tabst);
+                    bool storeall = GUILayout.Button("Store all ship objects", tabst);
                     if (storeall)
                     {
                         foreach (ShipBuildModeManager shipBuild in FindObjectsOfType<ShipBuildModeManager>())
@@ -938,18 +916,6 @@ namespace ClassLibrary4
                         StartOfRound.Instance.EndGameServerRpc(0);
                     }
 
-                    bool deleteallitems = GUILayout.Button("Delete all items", tabst);
-                    if (deleteallitems)
-                    {
-                        foreach (BaboonBirdAI item in FindObjectsOfType<BaboonBirdAI>())
-                        {
-                            foreach (NetworkObject netobj in FindObjectsOfType<NetworkObject>())
-                            {
-                                item.GrabScrapServerRpc(netobj, 0);
-                            }
-                        }
-                    }
-
                     if (GUILayout.Button("Unlock all doors", tabst))
                     {
                         foreach (DoorLock land in FindObjectsOfType<DoorLock>())
@@ -957,7 +923,6 @@ namespace ClassLibrary4
                             land.UnlockDoorServerRpc();
                         }
                     }
-
 
                     if (GUILayout.Button("Open all doors", tabst))
                     {
@@ -975,15 +940,7 @@ namespace ClassLibrary4
                         }
                     }
 
-                    if (GUILayout.Button("Explode all landmines", tabst))
-                    {
-                        foreach (Landmine land in FindObjectsOfType<Landmine>())
-                        {
-                            land.ExplodeMineServerRpc();
-                        }
-                    }
-
-                    if (GUILayout.Button("Open all giftboxes", tabst))
+                    if (GUILayout.Button("Break all giftboxes <color=red>(NOT TESTED)</color>", tabst))
                     {
                         foreach (GiftBoxItem gift in FindObjectsOfType<GiftBoxItem>())
                         {
@@ -998,10 +955,35 @@ namespace ClassLibrary4
                             mask.CreateMimicServerRpc(false, GameNetworkManager.Instance.localPlayerController.gameObject.transform.position);
                         }
                     }
+
+                    if (GUILayout.Button("Tp random player to another player", tabst))
+                    {
+                        for (int i = 0; i < StartOfRound.Instance.unlockablesList.unlockables.Count; i++)
+                        {
+                            var unlockable = StartOfRound.Instance.unlockablesList.unlockables[i];
+                            if (unlockable.unlockableName == "Teleporter")
+                            {
+                                foreach (Terminal term in FindObjectsOfType<Terminal>())
+                                    StartOfRound.Instance.BuyShipUnlockableServerRpc(i, term.groupCredits);
+                            }
+                        }
+
+                        foreach (ShipTeleporter tel in FindObjectsOfType<ShipTeleporter>())
+                        {
+                            var randomplayer = Stuff.inst.GetRandomPlayer();
+                            var randomplayer2 = Stuff.inst.GetRandomPlayer();
+                            StartOfRound.Instance.mapScreen.targetedPlayer = randomplayer;
+                            tel.gameObject.transform.position = randomplayer2.transform.position + new Vector3(0f, 6f, 0f);
+                            tel.teleporterPosition = randomplayer2.transform;
+                            tel.teleportOutPosition = randomplayer2.transform;
+                            tel.PressTeleportButtonServerRpc();
+                        }
+                    }
+
                     GUILayout.EndScrollView();
                     break;
                 case 5: //settings
-                    Toggles.inst.t_time = GUILayout.Toggle(Toggles.inst.t_time, "Better time");
+                    Toggles.Toggles.inst.t_time = GUILayout.Toggle(Toggles.Toggles.inst.t_time, "Better time");
                     GUILayout.Label("DEBUG:");
                     bool maybwork22 = GUILayout.Button("Break lobby/break everyones game <color=red>(LEAVE AND REJOIN TO DO IT, working???)</color>", tabst);
                     if (maybwork22)
@@ -1029,15 +1011,15 @@ namespace ClassLibrary4
                     }
                     break;
                 case 6: //managers
-                    Toggles.inst.w_enemies = GUILayout.Toggle(Toggles.inst.w_enemies, "Enemy manager");
-                    Toggles.inst.w_items = GUILayout.Toggle(Toggles.inst.w_items, "Item manager");
-                    Toggles.inst.w_players = GUILayout.Toggle(Toggles.inst.w_players, "Player manager");
-                    Toggles.inst.w_explorer = GUILayout.Toggle(Toggles.inst.w_explorer, "Scene explorer");
-                    Toggles.inst.w_moons = GUILayout.Toggle(Toggles.inst.w_moons, "Moons manager");
-                    Toggles.inst.w_pexplorer = GUILayout.Toggle(Toggles.inst.w_pexplorer, "Prefab explorer");
-                    Toggles.inst.w_spawners = GUILayout.Toggle(Toggles.inst.w_spawners, "Enemy spawner");
-                    Toggles.inst.w_ispawner = GUILayout.Toggle(Toggles.inst.w_ispawner, "Item spawner");
-                    Toggles.inst.w_landmine = GUILayout.Toggle(Toggles.inst.w_landmine, "Landmine manager");
+                    Toggles.Toggles.inst.w_enemies = GUILayout.Toggle(Toggles.Toggles.inst.w_enemies, "Enemy manager");
+                    Toggles.Toggles.inst.w_items = GUILayout.Toggle(Toggles.Toggles.inst.w_items, "Item manager");
+                    Toggles.Toggles.inst.w_players = GUILayout.Toggle(Toggles.Toggles.inst.w_players, "Player manager");
+                    Toggles.Toggles.inst.w_explorer = GUILayout.Toggle(Toggles.Toggles.inst.w_explorer, "Scene explorer");
+                    Toggles.Toggles.inst.w_moons = GUILayout.Toggle(Toggles.Toggles.inst.w_moons, "Moons manager");
+                    Toggles.Toggles.inst.w_pexplorer = GUILayout.Toggle(Toggles.Toggles.inst.w_pexplorer, "Prefab explorer");
+                    Toggles.Toggles.inst.w_spawners = GUILayout.Toggle(Toggles.Toggles.inst.w_spawners, "Enemy spawner");
+                    Toggles.Toggles.inst.w_ispawner = GUILayout.Toggle(Toggles.Toggles.inst.w_ispawner, "Item spawner");
+                    Toggles.Toggles.inst.w_landmine = GUILayout.Toggle(Toggles.Toggles.inst.w_landmine, "Landmine manager");
                     break;
             }
 
