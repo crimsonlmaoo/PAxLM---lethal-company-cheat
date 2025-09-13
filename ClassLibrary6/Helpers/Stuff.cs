@@ -5,8 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Unity.Netcode;
+using UnityEngine;
 
-namespace ClassLibrary6.Helpers
+namespace PAxLM.Helpers
 {
     public class Stuff
     {
@@ -70,6 +71,36 @@ namespace ClassLibrary6.Helpers
         {
             bool.TryParse(val, out bool v);
             return v;
+        }
+        public int GetRandomPlayerIndex()
+        {
+            List<PlayerControllerB> playersbruh = StartOfRound.Instance.allPlayerScripts.ToList();
+            int index = UnityEngine.Random.Range(0, playersbruh.Count);
+            return index;
+        }
+        public PlayerControllerB GetRandomPlayer()
+        {
+            List<PlayerControllerB> playersbruh = StartOfRound.Instance.allPlayerScripts.ToList();
+            int index = UnityEngine.Random.Range(0, playersbruh.Count);
+            return playersbruh[index];
+        }
+
+        public Vector3 GetRandomPlayerPos()
+        {
+            List<PlayerControllerB> playersbruh = StartOfRound.Instance.allPlayerScripts.ToList();
+            int index = UnityEngine.Random.Range(0, playersbruh.Count);
+            return playersbruh[index].gameObject.transform.position;
+        }
+        public Vector3 GetPlayerPos()
+        {
+            if (GameNetworkManager.Instance != null)
+            {
+                return GameNetworkManager.Instance.localPlayerController.transform.position;
+            }
+            else
+            {
+                return Vector3.zero;
+            }
         }
     }
 }
