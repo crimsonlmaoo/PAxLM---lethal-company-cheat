@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ClassLibrary6.Toggles
+namespace PAxLM.Toggles
 {
     public class Toggles
     {
@@ -37,6 +37,7 @@ namespace ClassLibrary6.Toggles
         public bool t_tesp = false;
         public bool t_pesp = false;
         public bool t_ttesp = false;
+        public bool t_desp = false;
         public bool t_lesp = false;
         //op
         public bool t_rigspam = false;
