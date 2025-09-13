@@ -4,19 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ClassLibrary6.Helpers
+namespace PAxLM.Helpers
 {
     public class Notifications
     {
         //one script one void
-        public static void Noti(string title, string whattosay)
+        public static void Noti(string whattosay)
         {
-            if (title != "") {
-                HUDManager.Instance.DisplayTip(title, whattosay);
-            }
-            else {
-                HUDManager.Instance.DisplayTip("PAxLM", whattosay);
-            }
+            HUDManager.Instance.DisplayTip("PAxLM", whattosay);
         }
     }
 }
