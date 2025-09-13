@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ClassLibrary4
+namespace PAxLM
 {
     public class Loader
     {
