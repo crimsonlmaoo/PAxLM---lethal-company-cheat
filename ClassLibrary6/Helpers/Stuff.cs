@@ -93,7 +93,7 @@ namespace PAxLM.Helpers
         }
         public Vector3 GetPlayerPos()
         {
-            if (GameNetworkManager.Instance != null)
+            if (GameNetworkManager.Instance.localPlayerController != null)
             {
                 return GameNetworkManager.Instance.localPlayerController.transform.position;
             }
